@@ -178,27 +178,17 @@ public class JSTypeRegistry implements Serializable {
   // there are no template types.
   private final TemplateTypeMap emptyTemplateTypeMap;
 
-  private final boolean tolerateUndefinedValues;
-
-  /**
-   * Constructs a new type registry populated with the built-in types.
-   */
-  public JSTypeRegistry(ErrorReporter reporter) {
-    this(reporter, false);
-  }
-
   /**
    * Constructs a new type registry populated with the built-in types.
    */
   public JSTypeRegistry(
-      ErrorReporter reporter, boolean tolerateUndefinedValues) {
+      ErrorReporter reporter) {
     this.reporter = reporter;
     this.emptyTemplateTypeMap = new TemplateTypeMap(
         this, ImmutableList.<TemplateType>of(), ImmutableList.<JSType>of());
     nativeTypes = new JSType[JSTypeNative.values().length];
     namesToTypes = new HashMap<String, JSType>();
     resetForTypeCheck();
-    this.tolerateUndefinedValues = tolerateUndefinedValues;
   }
 
   /**
@@ -220,10 +210,6 @@ public class JSTypeRegistry implements Serializable {
 
   public ErrorReporter getErrorReporter() {
     return reporter;
-  }
-
-  public boolean shouldTolerateUndefinedValues() {
-    return tolerateUndefinedValues;
   }
 
   /**
@@ -278,11 +264,13 @@ public class JSTypeRegistry implements Serializable {
     // Object
     FunctionType OBJECT_FUNCTION_TYPE =
         new FunctionType(this, "Object", null,
-            createArrowType(createOptionalParameters(ALL_TYPE), UNKNOWN_TYPE),
+            createArrowType(createOptionalParameters(ALL_TYPE), null),
             null,
             createTemplateTypeMap(ImmutableList.of(
                 objectIndexTemplateKey, objectElementTemplateKey), null),
             true, true);
+    OBJECT_FUNCTION_TYPE.getInternalArrowType().returnType =
+        OBJECT_FUNCTION_TYPE.getInstanceType();
 
     OBJECT_FUNCTION_TYPE.setPrototype(TOP_LEVEL_PROTOTYPE, null);
     registerNativeType(JSTypeNative.OBJECT_FUNCTION_TYPE, OBJECT_FUNCTION_TYPE);
@@ -1012,9 +1000,7 @@ public class JSTypeRegistry implements Serializable {
       // not be wrapped.
       return type;
     } else {
-      return shouldTolerateUndefinedValues()
-        ? createOptionalNullableType(type)
-        : createNullableType(type);
+      return createNullableType(type);
     }
   }
 
@@ -1398,7 +1384,8 @@ public class JSTypeRegistry implements Serializable {
    * @param info Used to mark object literals as structs; can be {@code null}
    */
   public ObjectType createAnonymousObjectType(JSDocInfo info) {
-    PrototypeObjectType type = new PrototypeObjectType(this, null, null);
+    PrototypeObjectType type = new PrototypeObjectType(
+        this, null, null, true /* anonymousType */);
     type.setPrettyPrint(true);
     type.setJSDocInfo(info);
     return type;
@@ -1477,6 +1464,11 @@ public class JSTypeRegistry implements Serializable {
 
   public TemplateType createTemplateType(String name) {
     return new TemplateType(this, name);
+  }
+
+  public TemplateType createTemplateTypeWithTransformation(
+      String name, Node expr) {
+    return new TemplateType(this, name, expr);
   }
 
   /**
@@ -1613,10 +1605,6 @@ public class JSTypeRegistry implements Serializable {
       case Token.STAR: // The AllType
         return getNativeType(ALL_TYPE);
 
-      case Token.LB: // Array type
-        // TODO(nicksantos): Enforce membership restrictions on the Array.
-        return getNativeType(ARRAY_TYPE);
-
       case Token.PIPE: // Union type
         UnionTypeBuilder builder = new UnionTypeBuilder(this);
         for (Node child = n.getFirstChild(); child != null;
@@ -1662,7 +1650,7 @@ public class JSTypeRegistry implements Serializable {
               // SomeType is not actually a valid type. To prevent these clients
               // from seeing unknown type errors, we explicitly don't parse
               // these types.
-              // TODO(user): Address this issue by removing bad template
+              // TODO(dimvar): Address this issue by removing bad template
               // annotations on non-templatized classes.
               if (++templateNodeIndex > nAllowedTypes) {
                 break;
@@ -1680,25 +1668,34 @@ public class JSTypeRegistry implements Serializable {
         }
 
       case Token.FUNCTION:
-        ObjectType thisType = null;
+        JSType thisType = null;
         boolean isConstructor = false;
         Node current = n.getFirstChild();
         if (current.getType() == Token.THIS ||
             current.getType() == Token.NEW) {
           Node contextNode = current.getFirstChild();
-          thisType =
-              ObjectType.cast(
-                  createFromTypeNodesInternal(
-                      contextNode, sourceName, scope)
-                  .restrictByNotNullOrUndefined());
-          if (thisType == null) {
-            reporter.warning(
-                SimpleErrorReporter.getMessage0(
-                    current.getType() == Token.THIS ?
-                    "msg.jsdoc.function.thisnotobject" :
-                    "msg.jsdoc.function.newnotobject"),
-                sourceName,
-                contextNode.getLineno(), contextNode.getCharno());
+
+          JSType candidateThisType = createFromTypeNodesInternal(
+              contextNode, sourceName, scope);
+
+          // Allow null/undefined 'this' types to indicate that
+          // the function is not called in a deliberate context,
+          // and 'this' access should raise warnings.
+          if (candidateThisType.isNullType() ||
+              candidateThisType.isVoidType()) {
+            thisType = candidateThisType;
+          } else {
+            thisType = ObjectType.cast(
+                candidateThisType.restrictByNotNullOrUndefined());
+            if (thisType == null) {
+              reporter.warning(
+                  SimpleErrorReporter.getMessage0(
+                      current.getType() == Token.THIS ?
+                      "msg.jsdoc.function.thisnotobject" :
+                      "msg.jsdoc.function.newnotobject"),
+                  sourceName,
+                  contextNode.getLineno(), contextNode.getCharno());
+            }
           }
 
           isConstructor = current.getType() == Token.NEW;
@@ -1826,5 +1823,26 @@ public class JSTypeRegistry implements Serializable {
    */
   public void clearTemplateTypeNames() {
     templateTypes.clear();
+  }
+
+  private boolean isNonNullable(JSType type) {
+    // TODO(lpino): Verify that nonNullableTypeNames is correct
+    for (String s : nonNullableTypeNames) {
+      if (type.isEquivalentTo(getType(s))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Checks whether the input type can be templatized. It must be an
+   * {@code Object} type which is not a {@code NamespaceType} and is not a
+   * non-nullable type.
+   */
+  public boolean isTemplatizable(JSType type) {
+    return (type instanceof ObjectType)
+        && !(type instanceof NamespaceType)
+        && !isNonNullable(type);
   }
 }

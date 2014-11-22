@@ -66,6 +66,9 @@ class PeepholeSubstituteAlternateSyntax
   @SuppressWarnings("fallthrough")
   public Node optimizeSubtree(Node node) {
     switch(node.getType()) {
+      case Token.ASSIGN_SUB:
+        return reduceSubstractionAssignment(node);
+
       case Token.TRUE:
       case Token.FALSE:
         return reduceTrueFalse(node);
@@ -208,7 +211,7 @@ class PeepholeSubstituteAlternateSyntax
     return n;
   }
 
-  private void addParameterAfter(Node parameterList, Node after) {
+  private static void addParameterAfter(Node parameterList, Node after) {
     if (parameterList != null) {
       // push the last parameter to the head of the list first.
       addParameterAfter(parameterList.getNext(), after);
@@ -297,7 +300,6 @@ class PeepholeSubstituteAlternateSyntax
     ImmutableSet.of(
       "Object",
       "Array",
-      "RegExp",
       "Error"
       );
 
@@ -307,26 +309,42 @@ class PeepholeSubstituteAlternateSyntax
   private Node tryFoldStandardConstructors(Node n) {
     Preconditions.checkState(n.isNew());
 
-    // If name normalization has been run then we know that
-    // new Object() does in fact refer to what we think it is
-    // and not some custom-defined Object().
-    if (isASTNormalized()) {
-      if (n.getFirstChild().isName()) {
-        String className = n.getFirstChild().getString();
-        if (STANDARD_OBJECT_CONSTRUCTORS.contains(className)) {
-          n.setType(Token.CALL);
-          n.putBooleanProp(Node.FREE_CALL, true);
-          reportCodeChange();
-        }
-      }
+    if (canFoldStandardConstructors(n)) {
+      n.setType(Token.CALL);
+      n.putBooleanProp(Node.FREE_CALL, true);
+      reportCodeChange();
     }
 
     return n;
   }
 
   /**
-   * Replaces a new Array or Object node with an object literal, unless the
-   * call to Array or Object is to a local function with the same name.
+   * @return Whether "new Object()" can be folded to "Object()" on {@code n}.
+   */
+  private boolean canFoldStandardConstructors(Node n) {
+    // If name normalization has been run then we know that
+    // new Object() does in fact refer to what we think it is
+    // and not some custom-defined Object().
+    if (isASTNormalized() && n.getFirstChild().isName()) {
+      String className = n.getFirstChild().getString();
+      if (STANDARD_OBJECT_CONSTRUCTORS.contains(className)) {
+        return true;
+      }
+      if ("RegExp".equals(className)) {
+        // Fold "new RegExp()" to "RegExp()", but only if the argument is a string.
+        // See issue 1260.
+        if (n.getChildAtIndex(1) == null || n.getChildAtIndex(1).isString()) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Replaces a new Array, Object, or RegExp node with a literal, unless the
+   * call is to a local constructor function with the same name.
    */
   private Node tryFoldLiteralConstructor(Node n) {
     Preconditions.checkArgument(n.isCall()
@@ -432,10 +450,6 @@ class PeepholeSubstituteAlternateSyntax
         // make sure empty pattern doesn't fold to //
         && !"".equals(pattern.getString())
 
-        // NOTE(nicksantos): Make sure that the regexp isn't longer than
-        // 100 chars, or it blows up the regexp parser in Opera 9.2.
-        && pattern.getString().length() < 100
-
         && (null == flags || flags.isString())
         // don't escape patterns with Unicode escapes since Safari behaves badly
         // (read can't parse or crashes) on regex literals with Unicode escapes
@@ -473,8 +487,39 @@ class PeepholeSubstituteAlternateSyntax
     return n;
   }
 
+  private Node reduceSubstractionAssignment(Node n) {
+    Node right = n.getLastChild();
+    if (right.isNumber()) {
+      if (right.getDouble() == 1) {
+        Node newNode = IR.dec(n.removeFirstChild(), false);
+        n.getParent().replaceChild(n, newNode);
+        reportCodeChange();
+        return newNode;
+      } else if (right.getDouble() == -1) {
+        Node newNode = IR.inc(n.removeFirstChild(), false);
+        n.getParent().replaceChild(n, newNode);
+        reportCodeChange();
+        return newNode;
+      }
+    }
+    return n;
+  }
+
   private Node reduceTrueFalse(Node n) {
     if (late) {
+      switch (n.getParent().getType()) {
+        case Token.EQ:
+        case Token.GT:
+        case Token.GE:
+        case Token.LE:
+        case Token.LT:
+        case Token.NE:
+          Node number = IR.number(n.isTrue() ? 1 : 0);
+          n.getParent().replaceChild(n, number);
+          reportCodeChange();
+          return number;
+      }
+
       Node not = IR.not(IR.number(n.isTrue() ? 0 : 1));
       not.copyInformationFromForTree(n);
       n.getParent().replaceChild(n, not);

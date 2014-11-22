@@ -34,6 +34,7 @@ public class NormalizeTest extends CompilerTestCase {
   public NormalizeTest() {
     super(EXTERNS);
     super.enableLineNumberCheck(true);
+    compareJsDoc = false;
   }
 
   @Override
@@ -71,11 +72,11 @@ public class NormalizeTest extends CompilerTestCase {
     test("for(;;){var b = foo(1), c = foo(2);}",
          "for(;;){var b = foo(1); var c = foo(2)}");
 
-    test("try{var b = foo(1), c = foo(2);} finally foo(3);",
-         "try{var b = foo(1); var c = foo(2)} finally foo(3);");
-    test("try{var b = foo(1),c = foo(2);} finally;",
-         "try{var b = foo(1); var c = foo(2)} finally;");
-    test("try{foo(0);} finally var b = foo(1), c = foo(2);",
+    test("try{var b = foo(1), c = foo(2);} finally { foo(3) }",
+         "try{var b = foo(1); var c = foo(2)} finally { foo(3); }");
+    test("try{var b = foo(1),c = foo(2);} finally {}",
+         "try{var b = foo(1); var c = foo(2)} finally {}");
+    test("try{foo(0);} finally { var b = foo(1), c = foo(2); }",
          "try{foo(0);} finally {var b = foo(1); var c = foo(2)}");
 
     test("switch(a) {default: var b = foo(1), c = foo(2); break;}",
@@ -146,6 +147,7 @@ public class NormalizeTest extends CompilerTestCase {
   }
 
   public void testForIn2() {
+    setExpectParseWarningsThisTest();
     // Verify vars are extracted from the FOR-IN node.
     test("for(var a = foo() in b) foo()",
          "var a = foo(); for(a in b) foo()");
@@ -214,6 +216,8 @@ public class NormalizeTest extends CompilerTestCase {
     testSame("switch (function g() {}) {}");
     test("switch (1) { case 1: function g() {}}",
          "switch (1) { case 1: var g = function () {}}");
+    test("if (true) {function g() {} function h() {}}",
+         "if (true) {var h = function() {}; var g = function () {}}");
 
 
     testSameInFunction("function f() {}");
@@ -396,11 +400,12 @@ public class NormalizeTest extends CompilerTestCase {
     compiler.init(
         Lists.<SourceFile>newArrayList(),
         Lists.<SourceFile>newArrayList(), new CompilerOptions());
-    Node code = Normalize.parseAndNormalizeSyntheticCode(
-        compiler, "function f(x) {} function g(x) {}", "prefix_");
+    String code = "function f(x) {} function g(x) {}";
+    Node ast = compiler.parseSyntheticCode(code);
+    Normalize.normalizeSyntheticCode(compiler, ast, "prefix_");
     assertEquals(
         "function f(x$$prefix_0){}function g(x$$prefix_1){}",
-        compiler.toSource(code));
+        compiler.toSource(ast));
   }
 
   public void testIsConstant() throws Exception {
@@ -536,7 +541,7 @@ public class NormalizeTest extends CompilerTestCase {
       return new CompilerPass() {
         @Override
         public void process(Node externs, Node root) {
-          new CollapseProperties(compiler, false, true).process(externs, root);
+          new CollapseProperties(compiler, true).process(externs, root);
         }
       };
     }

@@ -30,6 +30,7 @@ public class GenerateExportsTest extends CompilerTestCase {
 
   public GenerateExportsTest() {
     super(EXTERNS);
+    compareJsDoc = false;
   }
 
   @Override
@@ -50,6 +51,12 @@ public class GenerateExportsTest extends CompilerTestCase {
     super.enableLineNumberCheck(false);
 
     this.allowNonGlobalExports  = true;
+  }
+
+  @Override
+  protected void testExternChanges(String input, String expectedExtern) {
+    this.enableCompareAsTree(false);
+    super.testExternChanges(input, expectedExtern);
   }
 
   public void testExportSymbol() {
@@ -114,7 +121,7 @@ public class GenerateExportsTest extends CompilerTestCase {
          null, FindExportableNodes.EXPORT_ANNOTATION_NOT_ALLOWED);
   }
 
-  public void testNonGlobalScopeExport() {
+  public void testNonGlobalScopeExport1() {
     this.allowNonGlobalExports = false;
     test("(function() { /** @export */var FOO = 5 })()",
          null, FindExportableNodes.NON_GLOBAL_ERROR);
@@ -122,6 +129,12 @@ public class GenerateExportsTest extends CompilerTestCase {
     this.allowNonGlobalExports = true;
     test("(function() { /** @export */var FOO = 5 })()",
         null, FindExportableNodes.EXPORT_ANNOTATION_NOT_ALLOWED);
+  }
+
+  public void testNonGlobalScopeExport2() {
+    this.allowNonGlobalExports = false;
+    test("var x = {/** @export */ A:function() {}}",
+         null, FindExportableNodes.NON_GLOBAL_ERROR);
   }
 
   public void testExportClass() {
@@ -146,6 +159,27 @@ public class GenerateExportsTest extends CompilerTestCase {
   public void testExportObjectLit1() {
     allowExternsChanges(true);
     String code = "var E = {/** @export */ A:1, B:2};";
+    testSame(code);
+    testExternChanges(code, "Object.prototype.A;");
+  }
+
+  public void testExportObjectLit2() {
+    allowExternsChanges(true);
+    String code = "var E = {/** @export */ get A() { return 1 }, B:2};";
+    testSame(code);
+    testExternChanges(code, "Object.prototype.A;");
+  }
+
+  public void testExportObjectLit3() {
+    allowExternsChanges(true);
+    String code = "var E = {/** @export */ set A(v) {}, B:2};";
+    testSame(code);
+    testExternChanges(code, "Object.prototype.A;");
+  }
+
+  public void testExportObjectLit4() {
+    allowExternsChanges(true);
+    String code = "var E = {/** @export */ A:function() {}, B:2};";
     testSame(code);
     testExternChanges(code, "Object.prototype.A;");
   }

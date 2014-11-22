@@ -16,6 +16,7 @@
 
 package com.google.javascript.jscomp;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.javascript.jscomp.CompilerOptions.AliasTransformation;
@@ -42,13 +43,20 @@ public class ScopedAliasesTest extends CompilerTestCase {
   private static final String SCOPE_NAMESPACE =
       "var $jscomp = {}; $jscomp.scope = {};";
 
-  private static String EXTERNS = "var window;";
+  private static final String EXTERNS = "var window;";
 
   AliasTransformationHandler transformationHandler =
       CompilerOptions.NULL_ALIAS_TRANSFORMATION_HANDLER;
 
   public ScopedAliasesTest() {
     super(EXTERNS);
+    compareJsDoc = false;
+  }
+
+  @Override
+  public void tearDown() throws Exception {
+    super.tearDown();
+    disableTypeCheck();
   }
 
   private void testScoped(String code, String expected) {
@@ -67,6 +75,20 @@ public class ScopedAliasesTest extends CompilerTestCase {
   public void testTwoLevel() {
     testScoped("var d = goog.dom;d.createElement(d.TagName.DIV);",
                "goog.dom.createElement(goog.dom.TagName.DIV);");
+  }
+
+  public void testSourceInfo() {
+    testScoped("var d = dom;\n" +
+               "var e = event;\n" +
+               "alert(e.EventType.MOUSEUP);\n" +
+               "alert(d.TagName.DIV);\n",
+               "alert(event.EventType.MOUSEUP); alert(dom.TagName.DIV);");
+    Node root = getLastCompiler().getRoot();
+    Node dom = findQualifiedNameNode("dom", root);
+    Node event = findQualifiedNameNode("event", root);
+    assertTrue("Dom line: " + dom.getLineno() +
+               "\nEvent line: " + event.getLineno(),
+               dom.getLineno() > event.getLineno());
   }
 
   public void testTransitive() {
@@ -208,6 +230,70 @@ public class ScopedAliasesTest extends CompilerTestCase {
          "goog.bar.newMethod2=function(goog$$1, b){return goog.bar + b};");
   }
 
+  /**
+   * Make sure we don't hit an IllegalStateException for this case.
+   * @see https://github.com/google/closure-compiler/issues/400
+   */
+  public void testObjectLiteral() {
+    testScoped(Joiner.on('\n').join(
+        "var Foo = goog.Foo;",
+        "goog.x = {",
+        "  /** @param {Foo} foo */",
+        "  y: function(foo) { }",
+        "};"),
+        "goog.x = {y: function(foo) { }};");
+
+    testScoped(Joiner.on('\n').join(
+        "var Foo = goog.Foo;",
+        "goog.x = {",
+        "  y:",
+        "  /** @param {Foo} foo */ function(foo) {}",
+        "};"),
+        "goog.x = {y: function(foo) {}};");
+
+    testScoped(Joiner.on('\n').join(
+        "var Foo = goog.Foo;",
+        "goog.x = {",
+        "  y:",
+        "  /** @type {function(Foo)} */ (function(foo) {})",
+        "};"),
+        "goog.x = {y: /** @type {function(Foo)} */ (function(foo) {})};");
+  };
+
+  public void testJsDocNotIgnored() {
+    enableTypeCheck(CheckLevel.WARNING);
+    runTypeCheckAfterProcessing = true;
+
+    String externs = Joiner.on('\n').join(
+        "var ns;",
+        "/** @constructor */",
+        "ns.Foo;",
+        "",
+        "var goog;",
+        "/** @param {function()} fn */",
+        "goog.scope = function(fn) {}");
+
+    String js = Joiner.on('\n').join(
+        "goog.scope(function() {",
+        "  var Foo = ns.Foo;",
+        "  var x = {",
+        "    /** @param {Foo} foo */ y: function(foo) {}",
+        "  };",
+        "  x.y('');",
+        "});");
+    test(externs, js, null, null, TypeValidator.TYPE_MISMATCH_WARNING);
+
+    js = Joiner.on('\n').join(
+        "goog.scope(function() {",
+        "  var Foo = ns.Foo;",
+        "  var x = {",
+        "    y: /** @param {Foo} foo */ function(foo) {}",
+        "  };",
+        "  x.y('');",
+        "});");
+    test(externs, js, null, null, TypeValidator.TYPE_MISMATCH_WARNING);
+  }
+
   public void testUsingObjectLiteralToEscapeScoping() {
     // There are many ways to shoot yourself in the foot with goog.scope
     // and make the compiler generate bad code. We generally don't care.
@@ -324,6 +410,19 @@ public class ScopedAliasesTest extends CompilerTestCase {
         + "/** @typedef {goog.Timer} */ types.expected;");
   }
 
+  public void testJsDocRecord() {
+    enableTypeCheck(CheckLevel.WARNING);
+    runTypeCheckAfterProcessing = true;
+    test("/** @const */ var ns = {};" +
+         "goog.scope(function () {" +
+         "  var x = goog.Timer;" +
+         "  /** @type {{x: string}} */ ns.y = {'goog.Timer': 'x'};" +
+         "});",
+         " var ns = {}; ns.y = {'goog.Timer': 'x'};",
+         null,
+         TypeValidator.TYPE_MISMATCH_WARNING);
+  }
+
   public void testArrayJsDoc() {
     testTypes(
         "var x = goog.Timer;",
@@ -403,7 +502,7 @@ public class ScopedAliasesTest extends CompilerTestCase {
           + "/** @type {function() : x} */ types.actual;"
           + "/** @type {function() : wrong.wrong} */ types.expected;");
       fail("Test types should fail here.");
-    } catch (AssertionError e) {
+    } catch (AssertionError expected) {
     }
   }
 
@@ -487,7 +586,9 @@ public class ScopedAliasesTest extends CompilerTestCase {
 
   public void testUsedImproperly() {
     testFailure("var x = goog.scope(function() {});",
-        ScopedAliases.GOOG_SCOPE_USED_IMPROPERLY);
+        ScopedAliases.GOOG_SCOPE_MUST_BE_ALONE);
+    testFailure("var f = function() { goog.scope(function() {}); }",
+        ScopedAliases.GOOG_SCOPE_MUST_BE_IN_GLOBAL_SCOPE);
   }
 
   public void testBadParameters() {
@@ -503,6 +604,9 @@ public class ScopedAliasesTest extends CompilerTestCase {
 
   public void testNonAliasLocal() {
     testScopedFailure("try { } catch (e) {}",
+        ScopedAliases.GOOG_SCOPE_NON_ALIAS_LOCAL);
+
+    testScopedFailure("for (var k in { a: 1, b: 2 }) {}",
         ScopedAliases.GOOG_SCOPE_NON_ALIAS_LOCAL);
   }
 
@@ -564,6 +668,40 @@ public class ScopedAliasesTest extends CompilerTestCase {
          "  /** @type {number} */ var a;" +
          "});",
          SCOPE_NAMESPACE + "/** @type {number} */ $jscomp.scope.a;");
+  }
+
+  public void testIssue1144() {
+    test("var ns = {};" +
+         "ns.sub = {};" +
+         "/** @constructor */ ns.sub.C = function () {};" +
+         "goog.scope(function () {" +
+         "  var sub = ns.sub;" +
+         "  /** @type {sub.C} */" +
+         "  var x = null;" +
+         "});",
+         SCOPE_NAMESPACE +
+         "var ns = {};" +
+         "ns.sub = {};" +
+         "/** @constructor */ ns.sub.C = function () {};" +
+         "$jscomp.scope.x = null;");
+  }
+
+  public void testTypeCheck() {
+    enableTypeCheck(CheckLevel.WARNING);
+    runTypeCheckAfterProcessing = true;
+
+    String js = Joiner.on('\n').join(
+      "goog.scope(function () {",
+      "  /** @constructor */ function F() {}",
+      "  /** @return {F} */ function createFoo() { return 1; }",
+      "});");
+
+    test(js,
+         SCOPE_NAMESPACE +
+         "$jscomp.scope.createFoo = function() { return 1; };" +
+         "$jscomp.scope.F = function() { };",
+         null,
+         TypeValidator.TYPE_MISMATCH_WARNING);
   }
 
   // Alias Recording Tests
@@ -694,6 +832,11 @@ public class ScopedAliasesTest extends CompilerTestCase {
     return new ScopedAliases(compiler, null, transformationHandler);
   }
 
+  @Override
+  public int getNumRepetitions() {
+    return 1;
+  }
+
   private static class TransformationHandlerSpy
       implements AliasTransformationHandler {
 
@@ -706,7 +849,7 @@ public class ScopedAliasesTest extends CompilerTestCase {
     @Override
     public AliasTransformation logAliasTransformation(
         String sourceFile, SourcePosition<AliasTransformation> position) {
-      if(!observedPositions.containsKey(sourceFile)) {
+      if (!observedPositions.containsKey(sourceFile)) {
         observedPositions.put(sourceFile,
             Lists.<SourcePosition<AliasTransformation>> newArrayList());
       }
@@ -751,12 +894,10 @@ public class ScopedAliasesTest extends CompilerTestCase {
       JSDocInfo info = n.getJSDocInfo();
       if (info != null) {
         Collection<Node> typeNodes = info.getTypeNodes();
-        if (typeNodes.size() > 0) {
+        if (!typeNodes.isEmpty()) {
           if (actualTypes != null) {
             List<Node> expectedTypes = Lists.newArrayList();
-            for (Node typeNode : info.getTypeNodes()) {
-              expectedTypes.add(typeNode);
-            }
+            expectedTypes.addAll(info.getTypeNodes());
             assertEquals("Wrong number of JsDoc types",
                 expectedTypes.size(), actualTypes.size());
             for (int i = 0; i < expectedTypes.size(); i++) {
@@ -765,9 +906,7 @@ public class ScopedAliasesTest extends CompilerTestCase {
             }
           } else {
             actualTypes = Lists.newArrayList();
-            for (Node typeNode : info.getTypeNodes()) {
-              actualTypes.add(typeNode);
-            }
+            actualTypes.addAll(info.getTypeNodes());
           }
         }
       }

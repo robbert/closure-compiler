@@ -180,13 +180,19 @@ XMLHttpRequest.prototype.onreadystatechange;
  */
 function XMLHttpRequestEventTarget() {}
 
-/** @override */
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
 XMLHttpRequestEventTarget.prototype.addEventListener = function(
-    type, listener, useCapture) {};
+    type, listener, opt_useCapture) {};
 
-/** @override */
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
 XMLHttpRequestEventTarget.prototype.removeEventListener = function(
-    type, listener, useCapture) {};
+    type, listener, opt_useCapture) {};
 
 /** @override */
 XMLHttpRequestEventTarget.prototype.dispatchEvent = function(evt) {};

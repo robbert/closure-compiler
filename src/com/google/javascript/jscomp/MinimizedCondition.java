@@ -46,7 +46,7 @@ class MinimizedCondition {
     PREFER_UNNEGATED,
     /** Compute the length of the minimized condition without penalizing
      *  a leading NOT node, if present. */
-    ALLOW_LEADING_NOT;
+    ALLOW_LEADING_NOT
   }
 
   /** A representation equivalent to the original condition. */
@@ -96,7 +96,7 @@ class MinimizedCondition {
    * Return the shorter representation of the original condition node.
    * <p>
    * Depending on the context, this may require to either penalize or
-   * not the existance of a leading NOT node.
+   * not the existence of a leading NOT node.
    * <ul><li>When {@code style} is {@code PREFER_UNNEGATED}, simply try to
    * minimize the total length of the conditional.</li>
    * <li>When {@code style} is {@code ALLOW_LEADING_NOT}, prefer the right side

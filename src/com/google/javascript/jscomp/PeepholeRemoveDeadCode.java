@@ -59,15 +59,20 @@ class PeepholeRemoveDeadCode extends AbstractPeepholeOptimization {
         return tryFoldIf(subtree);
       case Token.WHILE:
         return tryFoldWhile(subtree);
-       case Token.FOR: {
-          Node condition = NodeUtil.getConditionExpression(subtree);
-          if (condition != null) {
-            tryFoldForCondition(condition);
-          }
+      case Token.FOR: {
+        Node condition = NodeUtil.getConditionExpression(subtree);
+        if (condition != null) {
+          tryFoldForCondition(condition);
         }
         return tryFoldFor(subtree);
+      }
       case Token.DO:
-        return tryFoldDo(subtree);
+        Node foldedDo = tryFoldDoAway(subtree);
+        if (foldedDo.isDo()) {
+          return tryFoldEmptyDo(foldedDo);
+        }
+        return foldedDo;
+
       case Token.TRY:
         return tryFoldTry(subtree);
       default:
@@ -489,7 +494,7 @@ class PeepholeRemoveDeadCode extends AbstractPeepholeOptimization {
   /**
    * @return Whether the node is an obvious control flow exit.
    */
-  private boolean isExit(Node n) {
+  private static boolean isExit(Node n) {
     switch (n.getType()) {
       case Token.BREAK:
       case Token.CONTINUE:
@@ -553,7 +558,7 @@ class PeepholeRemoveDeadCode extends AbstractPeepholeOptimization {
   /**
    * Some nodes unremovable node don't have side-effects.
    */
-  private boolean isUnremovableNode(Node n) {
+  private static boolean isUnremovableNode(Node n) {
     return (n.isBlock() && n.isSyntheticBlock()) || n.isScript();
   }
 
@@ -609,7 +614,7 @@ class PeepholeRemoveDeadCode extends AbstractPeepholeOptimization {
    * @return whether the node is a assignment to a simple name, or simple var
    * declaration with initialization.
    */
-  private boolean isSimpleAssignment(Node n) {
+  private static boolean isSimpleAssignment(Node n) {
     // For our purposes we define a simple assignment to be a assignment
     // to a NAME node, or a VAR declaration with one child and a initializer.
     if (NodeUtil.isExprAssign(n)
@@ -656,7 +661,7 @@ class PeepholeRemoveDeadCode extends AbstractPeepholeOptimization {
   /**
    * @return Whether the node is a rooted with a HOOK, AND, or OR node.
    */
-  private boolean isExprConditional(Node n) {
+  private static boolean isExprConditional(Node n) {
     if (n.isExprResult()) {
       switch (n.getFirstChild().getType()) {
         case Token.HOOK:
@@ -807,10 +812,14 @@ class PeepholeRemoveDeadCode extends AbstractPeepholeOptimization {
     }
 
     // Transform "(a = 2) ? x =2 : y" into "a=2,x=2"
-    n.detachChildren();
     Node branchToKeep = condValue.toBoolean(true) ? thenBody : elseBody;
     Node replacement;
-    if (mayHaveSideEffects(cond)) {
+    boolean condHasSideEffects = mayHaveSideEffects(cond);
+    // Must detach after checking for side effects, to ensure that the parents
+    // of nodes are set correctly.
+    n.detachChildren();
+
+    if (condHasSideEffects) {
       replacement = IR.comma(cond, branchToKeep).srcref(n);
     } else {
       replacement = branchToKeep;
@@ -868,13 +877,20 @@ class PeepholeRemoveDeadCode extends AbstractPeepholeOptimization {
       return n;
     }
 
+    Node parent = n.getParent();
     NodeUtil.redeclareVarsInsideBranch(n);
     if (!mayHaveSideEffects(cond)) {
-      NodeUtil.removeChild(n.getParent(), n);
+      NodeUtil.removeChild(parent, n);
     } else {
       Node statement = IR.exprResult(cond.detachFromParent())
           .copyInformationFrom(cond);
-      n.getParent().replaceChild(n, statement);
+      if (parent.isLabel()) {
+        Node block = IR.block();
+        block.copyInformationFrom(statement);
+        block.addChildToFront(statement);
+        statement = block;
+      }
+      parent.replaceChild(n, statement);
     }
     reportCodeChange();
     return null;
@@ -885,7 +901,7 @@ class PeepholeRemoveDeadCode extends AbstractPeepholeOptimization {
    * statements that were in the loop in a BLOCK node.
    * The block will be removed in a later pass, if possible.
    */
-  Node tryFoldDo(Node n) {
+  Node tryFoldDoAway(Node n) {
     Preconditions.checkArgument(n.isDo());
 
     Node cond = NodeUtil.getConditionExpression(n);
@@ -912,19 +928,42 @@ class PeepholeRemoveDeadCode extends AbstractPeepholeOptimization {
     }
     reportCodeChange();
 
+    return block;
+  }
+
+  /**
+   * Removes DOs that have empty bodies into FORs, which are
+   * much easier for the CFA to analyze.
+   */
+  Node tryFoldEmptyDo(Node n) {
+    Preconditions.checkArgument(n.isDo());
+
+    Node body = NodeUtil.getLoopCodeBlock(n);
+    if (body.isBlock() && !body.hasChildren()) {
+      Node cond = NodeUtil.getConditionExpression(n);
+      Node whileNode =
+          IR.forNode(IR.empty().srcref(n),
+                     cond.detachFromParent(),
+                     IR.empty().srcref(n),
+                     body.detachFromParent())
+          .srcref(n);
+      n.getParent().replaceChild(n, whileNode);
+      reportCodeChange();
+      return whileNode;
+    }
     return n;
   }
 
   /**
    *
    */
-  boolean hasBreakOrContinue(Node n) {
+  static boolean hasBreakOrContinue(Node n) {
     // TODO(johnlenz): This is overkill as named breaks may refer to outer
     // loops or labels, and any break my refer to an inner loop.
     // More generally, this check may be more expensive than we like.
     return NodeUtil.has(
         n,
-        Predicates.<Node>or(
+        Predicates.or(
             new NodeUtil.MatchNodeType(Token.BREAK),
             new NodeUtil.MatchNodeType(Token.CONTINUE)),
         NodeUtil.MATCH_NOT_FUNCTION);

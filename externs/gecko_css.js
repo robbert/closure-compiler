@@ -53,6 +53,7 @@
 /** @type {string} */ CSS2Properties.prototype.MozBoxOrdinalGroup;
 /** @type {string} */ CSS2Properties.prototype.MozBoxOrient;
 /** @type {string} */ CSS2Properties.prototype.MozBoxPack;
+/** @type {string} */ CSS2Properties.prototype.MozBoxShadow;
 /** @type {string} */ CSS2Properties.prototype.MozBoxSizing;
 /** @type {string} */ CSS2Properties.prototype.MozColumnCount;
 /** @type {string} */ CSS2Properties.prototype.MozColumnGap;

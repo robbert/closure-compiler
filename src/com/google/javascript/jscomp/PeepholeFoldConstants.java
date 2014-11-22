@@ -20,7 +20,6 @@ import com.google.common.base.Preconditions;
 import com.google.javascript.rhino.IR;
 import com.google.javascript.rhino.Node;
 import com.google.javascript.rhino.Token;
-import com.google.javascript.rhino.head.ScriptRuntime;
 import com.google.javascript.rhino.jstype.TernaryValue;
 
 /**
@@ -585,6 +584,14 @@ class PeepholeFoldConstants extends AbstractPeepholeOptimization {
         // (FALSE || x) => x
         // (TRUE && x) => x
         result = right;
+      } else {
+        // Left side may have side effects, but we know its boolean value.
+        // e.g. true_with_sideeffects || foo() => true_with_sideeffects, foo()
+        // or: false_with_sideeffects && foo() => false_with_sideeffects, foo()
+        // This, combined with PeepholeRemoveDeadCode, helps reduce expressions
+        // like "x() || false || z()".
+        n.detachChildren();
+        result = IR.comma(left, right);
       }
     }
 
@@ -593,7 +600,7 @@ class PeepholeFoldConstants extends AbstractPeepholeOptimization {
 
     if (result != null) {
       // Fold it!
-      n.removeChild(result);
+      n.detachChildren();
       parent.replaceChild(n, result);
       reportCodeChange();
 
@@ -706,8 +713,8 @@ class PeepholeFoldConstants extends AbstractPeepholeOptimization {
     // Unlike other operations, ADD operands are not always converted
     // to Number.
     if (opType == Token.ADD
-        && (NodeUtil.mayBeString(left, false)
-            || NodeUtil.mayBeString(right, false))) {
+        && (NodeUtil.mayBeString(left)
+            || NodeUtil.mayBeString(right))) {
       return null;
     }
 
@@ -730,13 +737,13 @@ class PeepholeFoldConstants extends AbstractPeepholeOptimization {
 
     switch (opType) {
       case Token.BITAND:
-        result = ScriptRuntime.toInt32(lval) & ScriptRuntime.toInt32(rval);
+        result = NodeUtil.toInt32(lval) & NodeUtil.toInt32(rval);
         break;
       case Token.BITOR:
-        result = ScriptRuntime.toInt32(lval) | ScriptRuntime.toInt32(rval);
+        result = NodeUtil.toInt32(lval) | NodeUtil.toInt32(rval);
         break;
       case Token.BITXOR:
-        result = ScriptRuntime.toInt32(lval) ^ ScriptRuntime.toInt32(rval);
+        result = NodeUtil.toInt32(lval) ^ NodeUtil.toInt32(rval);
         break;
       case Token.ADD:
         result = lval + rval;
@@ -830,7 +837,7 @@ class PeepholeFoldConstants extends AbstractPeepholeOptimization {
   private Node tryFoldAdd(Node node, Node left, Node right) {
     Preconditions.checkArgument(node.isAdd());
 
-    if (NodeUtil.mayBeString(node, true)) {
+    if (NodeUtil.mayBeString(node)) {
       if (NodeUtil.isLiteralValue(left, false) &&
           NodeUtil.isLiteralValue(right, false)) {
         // '6' + 7
@@ -1277,7 +1284,7 @@ class PeepholeFoldConstants extends AbstractPeepholeOptimization {
   }
 
   /** Returns whether this node must be coerced to a string. */
-  private boolean inForcedStringContext(Node n) {
+  private static boolean inForcedStringContext(Node n) {
     if (n.getParent().isGetElem() &&
         n.getParent().getLastChild() == n) {
       return true;
@@ -1384,24 +1391,11 @@ class PeepholeFoldConstants extends AbstractPeepholeOptimization {
     return n;
   }
 
-  private boolean isAssignmentTarget(Node n) {
-    Node parent = n.getParent();
-    if ((NodeUtil.isAssignmentOp(parent) && parent.getFirstChild() == n)
-        || parent.isInc()
-        || parent.isDec()) {
-      // If GETPROP/GETELEM is used as assignment target the object literal is
-      // acting as a temporary we can't fold it here:
-      //    "{a:x}.a += 1" is not "x += 1"
-      return true;
-    }
-    return false;
-  }
-
   private Node tryFoldArrayAccess(Node n, Node left, Node right) {
     // If GETPROP/GETELEM is used as assignment target the array literal is
     // acting as a temporary we can't fold it here:
     //    "[][0] += 1"
-    if (isAssignmentTarget(n)) {
+    if (NodeUtil.isAssignmentTarget(n)) {
       return n;
     }
 
@@ -1461,7 +1455,7 @@ class PeepholeFoldConstants extends AbstractPeepholeOptimization {
       return n;
     }
 
-    if (isAssignmentTarget(n)) {
+    if (NodeUtil.isAssignmentTarget(n)) {
       // If GETPROP/GETELEM is used as assignment target the object literal is
       // acting as a temporary we can't fold it here:
       //    "{a:x}.a += 1" is not "x += 1"

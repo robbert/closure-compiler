@@ -24,11 +24,15 @@
  */
 
 /**
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/document.createElementNS
+ * @see http://w3c.github.io/webcomponents/spec/custom/#extensions-to-document-interface-to-instantiate
  * @param {?string} namespaceURI
  * @param {string} qualifiedName
- * @return {Element}
+ * @param {string=} opt_typeExtension
+ * @return {!Element}
  */
-Document.prototype.createElementNS = function(namespaceURI, qualifiedName) {};
+Document.prototype.createElementNS =
+    function(namespaceURI, qualifiedName, opt_typeExtension) {};
 
 /**
  * @param {?string} namespaceURI

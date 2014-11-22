@@ -22,6 +22,7 @@
  *  http://www.w3.org/TR/REC-DOM-Level-1/ecma-script-language-binding.html
  *
  * @externs
+ * @author stevey@google.com (Steve Yegge)
  */
 // All the provided definitions have been type annotated.
 
@@ -97,7 +98,7 @@ HTMLDocument.prototype.domain;
 HTMLDocument.prototype.URL;
 
 /**
- * @type {HTMLElement}
+ * @type {HTMLBodyElement}
  * @see http://www.w3.org/TR/2000/CR-DOM-Level-2-20000510/html.html#ID-56360201
  */
 HTMLDocument.prototype.body;
@@ -304,7 +305,7 @@ HTMLLinkElement.prototype.target;
  */
 HTMLLinkElement.prototype.type;
 
-/** @override */
+/** @type {StyleSheet} */
 HTMLLinkElement.prototype.sheet;
 
 /**
@@ -415,7 +416,7 @@ HTMLStyleElement.prototype.media;
  */
 HTMLStyleElement.prototype.type;
 
-/** @override */
+/** @type {StyleSheet} */
 HTMLStyleElement.prototype.sheet;
 
 /**

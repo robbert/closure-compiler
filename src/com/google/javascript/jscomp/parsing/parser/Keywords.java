@@ -16,7 +16,11 @@
 
 package com.google.javascript.jscomp.parsing.parser;
 
-import java.util.HashMap;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
+
+import java.util.EnumMap;
+import java.util.Map;
 
 /**
  * The javascript keywords.
@@ -74,21 +78,20 @@ public enum Keywords {
     //7.8 Literals
     NULL("null", TokenType.NULL),
     TRUE("true", TokenType.TRUE),
-    FALSE("false", TokenType.FALSE),
+    FALSE("false", TokenType.FALSE);
 
-    // Parkour Specific
-    AWAIT("await", TokenType.AWAIT);
-
-  private static final HashMap<String, Keywords> keywordsByName =
-      new HashMap<String, Keywords>();
-  private static final HashMap<TokenType, Keywords> keywordsByType =
-      new HashMap<TokenType, Keywords>();
+  private static final Map<String, Keywords> KEYWORDS_BY_NAME;
+  private static final Map<TokenType, Keywords> KEYWORDS_BY_TYPE;
 
   static {
+    ImmutableMap.Builder<String, Keywords> keywordsByName = ImmutableMap.builder();
+    EnumMap<TokenType, Keywords> keywordsByType = new EnumMap<>(TokenType.class);
     for (Keywords kw : Keywords.values()) {
       keywordsByName.put(kw.value, kw);
       keywordsByType.put(kw.type, kw);
     }
+    KEYWORDS_BY_NAME = keywordsByName.build();
+    KEYWORDS_BY_TYPE = Maps.immutableEnumMap(keywordsByType);
   }
 
   public final String value;
@@ -108,15 +111,40 @@ public enum Keywords {
     return get(value) != null;
   }
 
+  public static boolean isKeyword(TokenType token) {
+    return get(token) != null;
+  }
+
+  /**
+   * Returns true if {@code token} is a "future reserved word" which can
+   * be used as a variable identifer, but only in non-strict mode.
+   */
+  public static boolean isStrictKeyword(TokenType token) {
+    switch(token) {
+      case IMPLEMENTS:
+      case INTERFACE:
+      case LET:
+      case PACKAGE:
+      case PRIVATE:
+      case PROTECTED:
+      case PUBLIC:
+      case STATIC:
+      case YIELD:
+        return true;
+      default:
+        return false;
+    }
+  }
+
   public static TokenType getTokenType(String value) {
-    return keywordsByName.get(value).type;
+    return KEYWORDS_BY_NAME.get(value).type;
   }
 
   public static Keywords get(String value) {
-    return keywordsByName.get(value);
+    return KEYWORDS_BY_NAME.get(value);
   }
 
   public static Keywords get(TokenType token) {
-    return keywordsByType.get(token);
+    return KEYWORDS_BY_TYPE.get(token);
   }
 }

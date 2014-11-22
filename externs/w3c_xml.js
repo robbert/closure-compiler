@@ -29,6 +29,7 @@
  * @see http://www.w3.org/TR/XMLHttpRequest2/
  *
  * @externs
+ * @author stevey@google.com (Steve Yegge)
  */
 
 
@@ -293,13 +294,19 @@ XPathNamespace.XPATH_NAMESPACE_NODE = 13;
  */
 function XMLHttpRequest() {}
 
-/** @override */
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
 XMLHttpRequest.prototype.addEventListener =
-    function(type, listener, useCapture) {};
+    function(type, listener, opt_useCapture) {};
 
-/** @override */
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
 XMLHttpRequest.prototype.removeEventListener =
-    function(type, listener, useCapture) {};
+    function(type, listener, opt_useCapture) {};
 
 /** @override */
 XMLHttpRequest.prototype.dispatchEvent = function(evt) {};
@@ -385,6 +392,12 @@ XMLHttpRequest.prototype.statusText;
  * @see http://www.w3.org/TR/XMLHttpRequest/#handler-xhr-onreadystatechange
  */
 XMLHttpRequest.prototype.onreadystatechange;
+
+/**
+ * @type {Function}
+ * @see http://www.w3.org/TR/XMLHttpRequest/#handler-xhr-onerror
+ */
+XMLHttpRequest.prototype.onerror;
 
 /**
  * The FormData object represents an ordered collection of entries. Each entry

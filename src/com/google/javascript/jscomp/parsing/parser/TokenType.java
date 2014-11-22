@@ -87,6 +87,7 @@ public enum TokenType {
   CLOSE_ANGLE(">"),
   LESS_EQUAL("<="),
   GREATER_EQUAL(">="),
+  ARROW("=>"),
   EQUAL_EQUAL("=="),
   NOT_EQUAL("!="),
   EQUAL_EQUAL_EQUAL("==="),
@@ -134,7 +135,15 @@ public enum TokenType {
 
   // Harmony extensions
   SPREAD("..."),
-  AWAIT(),
+  // 12.2.9 Template Literals
+  // Template literal tokens corresponding to different parts of the literal
+  // Eg: `hello` is scanned as a single NO_SUBSTITUTION_TEMPLATE: hello
+  // `hello${world}!` is scanned as TEMPLATE_HEAD: hello, TEMPLATE_MIDDLE: world,
+  // and TEMPLATE_TAIL: !
+  TEMPLATE_HEAD("template head"),
+  TEMPLATE_MIDDLE("template middle"),
+  TEMPLATE_TAIL("template tail"),
+  NO_SUBSTITUTION_TEMPLATE("no substitution template"),
   ;
 
   public final String value;

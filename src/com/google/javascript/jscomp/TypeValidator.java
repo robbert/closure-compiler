@@ -27,7 +27,6 @@ import static com.google.javascript.rhino.jstype.JSTypeNative.STRING_TYPE;
 import static com.google.javascript.rhino.jstype.JSTypeNative.UNKNOWN_TYPE;
 import static com.google.javascript.rhino.jstype.JSTypeNative.VOID_TYPE;
 
-import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.javascript.jscomp.Scope.Var;
@@ -46,6 +45,9 @@ import com.google.javascript.rhino.jstype.UnknownType;
 import java.text.MessageFormat;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
+
+import javax.annotation.Nullable;
 
 /**
  * A central reporter for all type violations: places where the programmer
@@ -101,6 +103,10 @@ class TypeValidator {
 
   static final DiagnosticType DUP_VAR_DECLARATION =
       DiagnosticType.warning("JSC_DUP_VAR_DECLARATION",
+          "variable {0} redefined, original definition at {1}:{2}");
+
+  static final DiagnosticType DUP_VAR_DECLARATION_TYPE_MISMATCH =
+      DiagnosticType.warning("JSC_DUP_VAR_DECLARATION_TYPE_MISMATCH",
           "variable {0} redefined with type {1}, " +
           "original definition at {2}:{3} with type {4}");
 
@@ -136,6 +142,7 @@ class TypeValidator {
       TYPE_MISMATCH_WARNING,
       MISSING_EXTENDS_TAG_WARNING,
       DUP_VAR_DECLARATION,
+      DUP_VAR_DECLARATION_TYPE_MISMATCH,
       HIDDEN_PROPERTY_MISMATCH,
       INTERFACE_METHOD_NOT_IMPLEMENTED,
       HIDDEN_INTERFACE_PROPERTY_MISMATCH,
@@ -151,6 +158,27 @@ class TypeValidator {
         NULL_TYPE, VOID_TYPE);
     this.reportUnnecessaryCasts = ((Compiler) compiler).getOptions().enables(
         DiagnosticGroups.UNNECESSARY_CASTS);
+  }
+
+  /**
+   * Utility function for getting a function type from a var.
+   */
+  static FunctionType getFunctionType(@Nullable Var v) {
+    JSType t = v == null ? null : v.getType();
+    ObjectType o = t == null ? null : t.dereference();
+    return JSType.toMaybeFunctionType(o);
+  }
+
+  /**
+   * Utility function for getting an instance type from a var pointing
+   * to the constructor.
+   */
+  static ObjectType getInstanceOfCtor(@Nullable Var v) {
+    FunctionType ctor = getFunctionType(v);
+    if (ctor != null && ctor.isConstructor()) {
+      return ctor.getInstanceType();
+    }
+    return null;
   }
 
   /**
@@ -173,7 +201,7 @@ class TypeValidator {
   // a warning and attempt to correct the mismatch, when possible.
 
   void expectValidTypeofName(NodeTraversal t, Node n, String found) {
-    report(JSError.make(t.getSourceName(), n, UNKNOWN_TYPEOF_VALUE, found));
+    report(JSError.make(n, UNKNOWN_TYPEOF_VALUE, found));
   }
 
   /**
@@ -291,7 +319,7 @@ class TypeValidator {
     return true;
   }
 
-  private boolean containsForwardDeclaredUnresolvedName(JSType type) {
+  private static boolean containsForwardDeclaredUnresolvedName(JSType type) {
     if (type.isUnionType()) {
       for (JSType alt : type.toMaybeUnionType().getAlternates()) {
         if (containsForwardDeclaredUnresolvedName(alt)) {
@@ -336,7 +364,7 @@ class TypeValidator {
     Preconditions.checkState(n.isGetElem());
     Node indexNode = n.getLastChild();
     if (objType.isStruct()) {
-      report(JSError.make(t.getSourceName(), indexNode,
+      report(JSError.make(indexNode,
                           ILLEGAL_PROPERTY_ACCESS, "'[]'", "struct"));
     }
     if (objType.isUnknownType()) {
@@ -441,29 +469,6 @@ class TypeValidator {
   }
 
   /**
-   * Expect that the first type can override a property of the second
-   * type.
-   *
-   * @param t The node traversal.
-   * @param n The node to issue warnings on.
-   * @param overridingType The overriding type.
-   * @param hiddenType The type of the property being overridden.
-   * @param propertyName The name of the property, for use in the
-   *     warning message.
-   * @param ownerType The type of the owner of the property, for use
-   *     in the warning message.
-   */
-  void expectCanOverride(NodeTraversal t, Node n, JSType overridingType,
-      JSType hiddenType, String propertyName, JSType ownerType) {
-    if (!overridingType.isSubtype(hiddenType)) {
-      registerMismatch(overridingType, hiddenType,
-          report(t.makeError(n, HIDDEN_PROPERTY_MISMATCH, propertyName,
-            ownerType.toString(), hiddenType.toString(),
-            overridingType.toString())));
-    }
-  }
-
-  /**
    * Expect that the first type is the direct superclass of the second type.
    *
    * @param t The node traversal.
@@ -488,8 +493,7 @@ class TypeValidator {
         registerMismatch(superObject, declaredSuper, report(
             t.makeError(n, MISSING_EXTENDS_TAG_WARNING, subObject.toString())));
       } else {
-        mismatch(t.getSourceName(), n,
-            "mismatch in declaration of superclass type",
+        mismatch(n, "mismatch in declaration of superclass type",
             superObject, declaredSuper);
       }
 
@@ -608,10 +612,17 @@ class TypeValidator {
         if (!(allowDupe ||
               var.getParentNode().isExprResult()) ||
             !newType.isEquivalentTo(varType)) {
-          report(JSError.make(sourceName, n, DUP_VAR_DECLARATION,
-              variableName, newType.toString(), var.getInputName(),
-              String.valueOf(var.nameNode.getLineno()),
-              varType.toString()));
+
+          if (newType.isEquivalentTo(varType)) {
+            report(JSError.make(n, DUP_VAR_DECLARATION,
+                variableName, var.getInputName(),
+                String.valueOf(var.nameNode.getLineno())));
+          } else {
+            report(JSError.make(n, DUP_VAR_DECLARATION_TYPE_MISMATCH,
+                variableName, newType.toString(), var.getInputName(),
+                String.valueOf(var.nameNode.getLineno()),
+                varType.toString()));
+          }
         }
       }
     }
@@ -648,7 +659,7 @@ class TypeValidator {
       String sourceName = n.getSourceFileName();
       sourceName = sourceName == null ? "" : sourceName;
       registerMismatch(instance, implementedInterface,
-          report(JSError.make(sourceName, n,
+          report(JSError.make(n,
           INTERFACE_METHOD_NOT_IMPLEMENTED,
           prop, implementedInterface.toString(), instance.toString())));
     } else {
@@ -689,7 +700,7 @@ class TypeValidator {
    */
   private void mismatch(NodeTraversal t, Node n,
                         String msg, JSType found, JSType required) {
-    mismatch(t.getSourceName(), n, msg, found, required);
+    mismatch(n, msg, found, required);
   }
 
   private void mismatch(NodeTraversal t, Node n,
@@ -697,10 +708,9 @@ class TypeValidator {
     mismatch(t, n, msg, found, getNativeType(required));
   }
 
-  private void mismatch(String sourceName, Node n,
-                        String msg, JSType found, JSType required) {
+  private void mismatch(Node n, String msg, JSType found, JSType required) {
     registerMismatch(found, required, report(
-        JSError.make(sourceName, n, TYPE_MISMATCH_WARNING,
+        JSError.make(n, TYPE_MISMATCH_WARNING,
                      formatFoundRequired(msg, found, required))));
   }
 
@@ -741,9 +751,15 @@ class TypeValidator {
   /**
    * Formats a found/required error message.
    */
-  private String formatFoundRequired(String description, JSType found,
-      JSType required) {
-    return MessageFormat.format(FOUND_REQUIRED, description, found, required);
+  private static String formatFoundRequired(String description, JSType found,
+                                            JSType required) {
+    String foundStr = found.toString();
+    String requiredStr = required.toString();
+    if (foundStr.equals(requiredStr)) {
+      foundStr = found.toAnnotationString();
+      requiredStr = required.toAnnotationString();
+    }
+    return MessageFormat.format(FOUND_REQUIRED, description, foundStr, requiredStr);
   }
 
   /**
@@ -801,9 +817,8 @@ class TypeValidator {
       }
     }
 
-    String qualifiedName = n.getQualifiedName();
-    if (qualifiedName != null) {
-      return qualifiedName;
+    if (n.isQualifiedName()) {
+      return n.getQualifiedName();
     } else if (type.isFunctionType()) {
       // Don't show complex function names.
       return "function";
@@ -875,7 +890,7 @@ class TypeValidator {
     }
 
     @Override public int hashCode() {
-      return Objects.hashCode(typeA, typeB);
+      return Objects.hash(typeA, typeB);
     }
 
     @Override public String toString() {

@@ -17,7 +17,6 @@
 package com.google.javascript.jscomp.parsing;
 
 import com.google.common.base.Preconditions;
-import com.google.javascript.rhino.head.ScriptRuntime;
 
 /**
  * This class implements the scanner for JsDoc strings.
@@ -98,25 +97,25 @@ class JsDocTokenStream {
           return JsDocToken.COMMA;
 
         case '>':
-          return JsDocToken.GT;
+          return JsDocToken.RIGHT_ANGLE;
 
         case '(':
-          return JsDocToken.LP;
+          return JsDocToken.LEFT_PAREN;
 
         case ')':
-          return JsDocToken.RP;
+          return JsDocToken.RIGHT_PAREN;
 
         case '{':
-          return JsDocToken.LC;
+          return JsDocToken.LEFT_CURLY;
 
         case '}':
-          return JsDocToken.RC;
+          return JsDocToken.RIGHT_CURLY;
 
         case '[':
-          return JsDocToken.LB;
+          return JsDocToken.LEFT_SQUARE;
 
         case ']':
-          return JsDocToken.RB;
+          return JsDocToken.RIGHT_SQUARE;
 
         case '?':
           return JsDocToken.QMARK;
@@ -134,10 +133,13 @@ class JsDocTokenStream {
           matchChar('|');
           return JsDocToken.PIPE;
 
+        case '<':
+          return JsDocToken.LEFT_ANGLE;
+
         case '.':
           c = getChar();
           if (c == '<') {
-            return JsDocToken.LT;
+            return JsDocToken.LEFT_ANGLE;
           } else {
             if (c == '.') {
               c = getChar();
@@ -234,7 +236,8 @@ class JsDocTokenStream {
 
   private String getStringFromBuffer() {
     tokenEnd = cursor;
-    return new String(stringBuffer, 0, stringBufferTop);
+    String s = new String(stringBuffer, 0, stringBufferTop);
+    return s.intern();
   }
 
   private void addToString(int c) {
@@ -280,6 +283,7 @@ class JsDocTokenStream {
       case '@':
       case '*':
       case ',':
+      case '<':
       case '>':
       case ':':
       case '(':
@@ -374,7 +378,7 @@ class JsDocTokenStream {
         if (isJSFormatChar(c)) {
           continue;
         }
-        if (ScriptRuntime.isJSLineTerminator(c)) {
+        if (isJSLineTerminator(c)) {
           lineEndChar = c;
           c = '\n';
         }
@@ -420,7 +424,7 @@ class JsDocTokenStream {
         if (isJSFormatChar(c)) {
           continue;
         }
-        if (ScriptRuntime.isJSLineTerminator(c)) {
+        if (isJSLineTerminator(c)) {
           lineEndChar = c;
           c = '\n';
         }
@@ -432,6 +436,15 @@ class JsDocTokenStream {
 
       return c;
     }
+  }
+
+  public static boolean isJSLineTerminator(int c) {
+    // Optimization for faster check for eol character:
+    // they do not have 0xDFD0 bits set
+    if ((c & 0xDFD0) != 0) {
+      return false;
+    }
+    return c == '\n' || c == '\r' || c == 0x2028 || c == 0x2029;
   }
 
   private void ungetCharIgnoreLineEnd(int c) {

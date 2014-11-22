@@ -231,6 +231,9 @@ final class NameAnalyzer implements CompilerPass {
     /** Whether the name is used in a instanceof check */
     boolean hasInstanceOfReference = false;
 
+    /** Whether the name is directly set */
+    boolean hasSetterReference = false;
+
     /**
      * Output the node as a string
      *
@@ -241,7 +244,7 @@ final class NameAnalyzer implements CompilerPass {
       StringBuilder out = new StringBuilder();
       out.append(name);
 
-      if (prototypeNames.size() > 0) {
+      if (!prototypeNames.isEmpty()) {
         out.append(" (CLASS)\n");
         out.append(" - FUNCTIONS: ");
         Iterator<String> pIter = prototypeNames.iterator();
@@ -280,13 +283,6 @@ final class NameAnalyzer implements CompilerPass {
     JsName name;
 
     /**
-     * Top GETPROP or NAME or STRING [objlit key] node defining the name of
-     * this node
-     */
-    @SuppressWarnings("unused")
-    Node node;
-
-    /**
      * Parent node of the name access
      * (ASSIGN, VAR, FUNCTION, OBJECTLIT, or CALL)
      */
@@ -301,7 +297,6 @@ final class NameAnalyzer implements CompilerPass {
      */
     JsNameRefNode(JsName name, Node node) {
       this.name = name;
-      this.node = node;
       this.parent = node.getParent();
     }
 
@@ -372,7 +367,7 @@ final class NameAnalyzer implements CompilerPass {
   /**
    * Base class for special reference nodes.
    */
-  private abstract class SpecialReferenceNode implements RefNode {
+  private abstract static class SpecialReferenceNode implements RefNode {
     /** JsName node for the function */
     JsName name;
 
@@ -687,6 +682,7 @@ final class NameAnalyzer implements CompilerPass {
       JsName jsn = getName(name, true);
       JsNameRefNode nameRefNode = new JsNameRefNode(jsn, node);
       refNodes.add(nameRefNode);
+      jsn.hasSetterReference = true;
 
       // Now, look at all parent names and record that their properties have
       // been written to.
@@ -880,14 +876,25 @@ final class NameAnalyzer implements CompilerPass {
         return;
       }
 
-      if (parent.isInstanceOf() &&
-          parent.getLastChild() == n &&
-          // Don't cover GETELEMs with a global root node.
-          n.isQualifiedName()) {
+      // instanceof checks are not handled like regular read references.
+      boolean isInstanceOfCheck = parent.isInstanceOf() &&
+          parent.getLastChild() == n;
+      if (isInstanceOfCheck) {
         JsName checkedClass = getName(nameInfo.name, true);
-        refNodes.add(new InstanceOfCheckNode(checkedClass, n));
-        checkedClass.hasInstanceOfReference = true;
-        return;
+
+        // If we know where this constructor is created, and we
+        // know we can find all 'new' calls on it, then treat
+        // this as a special reference. It will be replaced with
+        // false if there are no other references, because we
+        // know the class can't be instantiated.
+        if (checkedClass.hasSetterReference &&
+            !nameInfo.isExternallyReferenceable &&
+            // Exclude GETELEMs.
+            n.isQualifiedName()) {
+          refNodes.add(new InstanceOfCheckNode(checkedClass, n));
+          checkedClass.hasInstanceOfReference = true;
+          return;
+        }
       }
 
       // Determine which name might be potentially referring to this one by
@@ -1283,15 +1290,15 @@ final class NameAnalyzer implements CompilerPass {
     return sb.toString();
   }
 
-  private void appendListItem(StringBuilder sb, String text) {
+  private static void appendListItem(StringBuilder sb, String text) {
     sb.append("<li>" + text + "</li>\n");
   }
 
-  private String nameLink(String name) {
+  private static String nameLink(String name) {
     return "<a href=\"#" + name + "\">" + name + "</a>";
   }
 
-  private String nameAnchor(String name) {
+  private static String nameAnchor(String name) {
     return "<a name=\"" + name + "\">" + name + "</a>";
   }
 
@@ -1796,7 +1803,7 @@ final class NameAnalyzer implements CompilerPass {
    * syntactic sugar for IF statements; therefore this method returns
    * true for the predicate and false otherwise.
    */
-  private boolean valueConsumedByParent(Node n, Node parent) {
+  private static boolean valueConsumedByParent(Node n, Node parent) {
     if (NodeUtil.isAssignmentOp(parent)) {
       return parent.getLastChild() == n;
     }
@@ -1825,7 +1832,7 @@ final class NameAnalyzer implements CompilerPass {
    * Merge a list of nodes into a single expression.  The value of the
    * new expression is determined by the last expression in the list.
    */
-  private Node collapseReplacements(List<Node> replacements) {
+  private static Node collapseReplacements(List<Node> replacements) {
     Node expr = null;
     for (Node rep : replacements) {
       if (rep.isExprResult()) {
@@ -1846,7 +1853,7 @@ final class NameAnalyzer implements CompilerPass {
   /**
    * Extract a list of subexpressions that act as right hand sides.
    */
-  private List<Node> getRhsSubexpressions(Node n) {
+  private static List<Node> getRhsSubexpressions(Node n) {
     switch (n.getType()) {
       case Token.EXPR_RESULT:
         // process body

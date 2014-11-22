@@ -22,6 +22,7 @@ import com.google.javascript.rhino.Node;
  * Tests for PeepholeRemoveDeadCodeTest in isolation. Tests for the interaction
  * of multiple peephole passes are in PeepholeIntegrationTest.
  */
+
 public class PeepholeRemoveDeadCodeTest extends CompilerTestCase {
 
   private static final String MATH =
@@ -146,6 +147,7 @@ public class PeepholeRemoveDeadCodeTest extends CompilerTestCase {
 
     fold("y = (x ? void 0 : void 0)", "y = void 0");
     fold("y = (x ? f() : f())", "y = f()");
+    fold("(function(){}) ? function(){} : function(){}", "");
   }
 
   public void testConstantConditionWithSideEffect1() {
@@ -219,6 +221,10 @@ public class PeepholeRemoveDeadCodeTest extends CompilerTestCase {
     // Can't fold with break or continues.
     foldSame("do { foo(); continue; } while(0)");
     foldSame("do { foo(); break; } while(0)");
+  }
+
+  public void testFoldEmptyDo() {
+    fold("do { } while(true);", "for (;;);");
   }
 
   public void testMinimizeWhileConstantCondition() {
@@ -646,7 +652,7 @@ public class PeepholeRemoveDeadCodeTest extends CompilerTestCase {
   }
 
   public void testComplex2() {
-    test("1 && (a() ? b() : 1)", "1 && a() && b()");
+    test("1 && (a() ? b() : 1)", "1 && (a() && b())");
   }
 
   public void testComplex3() {

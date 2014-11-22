@@ -36,15 +36,19 @@
  */
 function HTMLUnknownElement() {}
 
-/*
- * JSON API.
- */
-
 /**
- * @see https://developer.mozilla.org/En/Using_native_JSON
- * @type {!JSONType}
+ * Note: In IE, the contains() method only exists on Elements, not Nodes.
+ * Therefore, it is recommended that you use the Conformance framework to
+ * prevent calling this on Nodes which are not Elements.
+ * @see https://connect.microsoft.com/IE/feedback/details/780874/node-contains-is-incorrect
+ *
+ * @param {Node} n The node to check
+ * @return {boolean} If 'n' is this Node, or is contained within this Node.
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/Node.contains
+ * @nosideeffects
  */
-Window.prototype.JSON;
+Node.prototype.contains = function(n) {};
+
 
 /**
  * @constructor
@@ -77,6 +81,7 @@ HTMLCanvasElement.prototype.getContext = function(contextId, opt_args) {};
 
 /**
  * @constructor
+ * @see http://www.w3.org/TR/2dcontext/#canvasrenderingcontext2d
  */
 function CanvasRenderingContext2D() {}
 
@@ -271,11 +276,11 @@ CanvasRenderingContext2D.prototype.rect = function(x, y, w, h) {};
  * @param {number} radius
  * @param {number} startAngle
  * @param {number} endAngle
- * @param {boolean=} anticlockwise
+ * @param {boolean=} opt_anticlockwise
  * @return {undefined}
  */
 CanvasRenderingContext2D.prototype.arc = function(
-    x, y, radius, startAngle, endAngle, anticlockwise) {};
+    x, y, radius, startAngle, endAngle, opt_anticlockwise) {};
 
 /**
  * @return {undefined}
@@ -332,7 +337,8 @@ CanvasRenderingContext2D.prototype.measureText = function(text) {};
  * @param {number} dx Destination x coordinate.
  * @param {number} dy Destination y coordinate.
  * @param {number=} opt_dw Destination box width.  Defaults to the image width.
- * @param {number=} opt_dh Destination box height.  Defaults to the image height.
+ * @param {number=} opt_dh Destination box height.
+ *     Defaults to the image height.
  * @param {number=} opt_sx Source box x coordinate.  Used to select a portion of
  *     the source image to draw.  Defaults to 0.
  * @param {number=} opt_sy Source box y coordinate.  Used to select a portion of
@@ -688,19 +694,15 @@ HTMLImageElement.prototype.complete;
 HTMLImageElement.prototype.crossOrigin;
 
 /**
- * The postMessage method (as defined by HTML5 spec and implemented in FF3).
+ * This is a superposition of the Window and Worker postMessage methods.
  * @param {*} message
- * @param {string|Array} targetOrigin The target origin in the 2-argument
- *     version of this function. WebKit seems to have implemented this
- *     function wrong in the 3-argument version so that ports is the
- *     second argument.
- * @param {string|Array=} ports An optional array of ports or the target
- *     origin. WebKit seems to have implemented this
- *     function wrong in the 3-argument version so that targetOrigin is the
- *     third argument.
- * @see http://dev.w3.org/html5/postmsg/#dom-window-postmessage
+ * @param {(string|!Array.<!Transferable>)=} opt_targetOriginOrTransfer
+ * @param {(string|!Array.<!MessagePort>|!Array.<!Transferable>)=}
+ *     opt_targetOriginOrPortsOrTransfer
+ * @return {void}
  */
-Window.prototype.postMessage = function(message, targetOrigin, ports) {};
+function postMessage(message, opt_targetOriginOrTransfer,
+    opt_targetOriginOrPortsOrTransfer) {}
 
 /**
  * The postMessage method (as implemented in Opera).
@@ -722,13 +724,19 @@ Document.prototype.head;
  */
 function DOMApplicationCache() {}
 
-/** @override */
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
 DOMApplicationCache.prototype.addEventListener = function(
-    type, listener, useCapture) {};
+    type, listener, opt_useCapture) {};
 
-/** @override */
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
 DOMApplicationCache.prototype.removeEventListener = function(
-    type, listener, useCapture) {};
+    type, listener, opt_useCapture) {};
 
 /** @override */
 DOMApplicationCache.prototype.dispatchEvent = function(evt) {};
@@ -854,25 +862,25 @@ Window.prototype.importScripts = function(var_args) {};
 var importScripts = function(var_args) {};
 
 /**
- * @see http://dev.w3.org/html5/postmsg/
- * @interface
- */
-function Transferable() {}
-
-/**
  * @see http://dev.w3.org/html5/workers/
  * @constructor
  * @implements {EventTarget}
  */
 function WebWorker() {}
 
-/** @override */
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
 WebWorker.prototype.addEventListener = function(
-    type, listener, useCapture) {};
+    type, listener, opt_useCapture) {};
 
-/** @override */
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
 WebWorker.prototype.removeEventListener = function(
-    type, listener, useCapture) {};
+    type, listener, opt_useCapture) {};
 
 /** @override */
 WebWorker.prototype.dispatchEvent = function(evt) {};
@@ -890,12 +898,13 @@ WebWorker.prototype.postMessage = function(message) {};
 
 /**
  * Sent when the worker thread posts a message to its creator.
- * @type {?function(!MessageEvent)}
+ * @type {?function(!MessageEvent.<*>)}
  */
 WebWorker.prototype.onmessage;
 
 /**
  * Sent when the worker thread encounters an error.
+ * TODO(tbreisacher): Should this change to function(!ErrorEvent)?
  * @type {?function(!Event)}
  */
 WebWorker.prototype.onerror;
@@ -907,13 +916,19 @@ WebWorker.prototype.onerror;
  */
 function Worker(opt_arg0) {}
 
-/** @override */
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
 Worker.prototype.addEventListener = function(
-    type, listener, useCapture) {};
+    type, listener, opt_useCapture) {};
 
-/** @override */
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
 Worker.prototype.removeEventListener = function(
-    type, listener, useCapture) {};
+    type, listener, opt_useCapture) {};
 
 /** @override */
 Worker.prototype.dispatchEvent = function(evt) {};
@@ -926,28 +941,29 @@ Worker.prototype.terminate = function() {};
 /**
  * Posts a message to the worker thread.
  * @param {*} message
- * @param {Array.<Transferable>=} opt_transfer
+ * @param {Array.<!Transferable>=} opt_transfer
  */
 Worker.prototype.postMessage = function(message, opt_transfer) {};
 
 /**
  * Posts a message to the worker thread.
  * @param {*} message
- * @param {Array.<Transferable>=} opt_transfer
+ * @param {Array.<!Transferable>=} opt_transfer
  */
 Worker.prototype.webkitPostMessage = function(message, opt_transfer) {};
 
 /**
  * Sent when the worker thread posts a message to its creator.
- * @type {?function(!MessageEvent)}
+ * @type {?function(!MessageEvent.<*>)}
  */
-Worker.prototype.onmessage = function() {};
+Worker.prototype.onmessage;
 
 /**
  * Sent when the worker thread encounters an error.
+ * TODO(tbreisacher): Should this change to function(!ErrorEvent)?
  * @type {?function(!Event)}
  */
-Worker.prototype.onerror = function() {};
+Worker.prototype.onerror;
 
 /**
  * @see http://dev.w3.org/html5/workers/
@@ -959,13 +975,19 @@ Worker.prototype.onerror = function() {};
  */
 function SharedWorker(scriptURL, opt_name) {}
 
-/** @override */
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
 SharedWorker.prototype.addEventListener = function(
-    type, listener, useCapture) {};
+    type, listener, opt_useCapture) {};
 
-/** @override */
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
 SharedWorker.prototype.removeEventListener = function(
-    type, listener, useCapture) {};
+    type, listener, opt_useCapture) {};
 
 /** @override */
 SharedWorker.prototype.dispatchEvent = function(evt) {};
@@ -977,9 +999,10 @@ SharedWorker.prototype.port;
 
 /**
  * Called on network errors for loading the initial script.
+ * TODO(tbreisacher): Should this change to function(!ErrorEvent)?
  * @type {?function(!Event)}
  */
-SharedWorker.prototype.onerror = function() {};
+SharedWorker.prototype.onerror;
 
 /**
  * @see http://dev.w3.org/html5/workers/
@@ -1054,7 +1077,7 @@ function DedicatedWorkerGlobalScope() {}
 /**
  * Posts a message to creator of this worker.
  * @param {*} message
- * @param {Array.<Transferable>=} opt_transfer
+ * @param {Array.<!Transferable>=} opt_transfer
  */
 DedicatedWorkerGlobalScope.prototype.postMessage =
     function(message, opt_transfer) {};
@@ -1062,16 +1085,16 @@ DedicatedWorkerGlobalScope.prototype.postMessage =
 /**
  * Posts a message to creator of this worker.
  * @param {*} message
- * @param {Array.<Transferable>=} opt_transfer
+ * @param {Array.<!Transferable>=} opt_transfer
  */
 DedicatedWorkerGlobalScope.prototype.webkitPostMessage =
     function(message, opt_transfer) {};
 
 /**
  * Sent when the creator posts a message to this worker.
- * @type {?function(!MessageEvent)}
+ * @type {?function(!MessageEvent.<*>)}
  */
-DedicatedWorkerGlobalScope.prototype.onmessage = function() {};
+DedicatedWorkerGlobalScope.prototype.onmessage;
 
 /**
  * @see http://dev.w3.org/html5/workers/
@@ -1087,7 +1110,7 @@ SharedWorkerGlobalScope.prototype.name;
  * Sent when a connection to this worker is opened.
  * @type {?function(!Event)}
  */
-SharedWorkerGlobalScope.prototype.onconnect = function() {};
+SharedWorkerGlobalScope.prototype.onconnect;
 
 /** @type {Element} */
 HTMLElement.prototype.contextMenu;
@@ -1120,6 +1143,42 @@ HTMLElement.prototype.hidden;
 /** @type {boolean} */
 HTMLElement.prototype.spellcheck;
 
+/**
+ * @see http://www.w3.org/TR/components-intro/
+ * @return {!ShadowRoot}
+ */
+HTMLElement.prototype.createShadowRoot;
+
+/**
+ * @see http://www.w3.org/TR/components-intro/
+ * @return {!ShadowRoot}
+ */
+HTMLElement.prototype.webkitCreateShadowRoot;
+
+/**
+ * @see http://www.w3.org/TR/shadow-dom/
+ * @type {ShadowRoot}
+ */
+HTMLElement.prototype.shadowRoot;
+
+/**
+ * @see http://www.w3.org/TR/components-intro/
+ * @type {function()}
+ */
+HTMLElement.prototype.createdCallback;
+
+/**
+ * @see http://w3c.github.io/webcomponents/explainer/#lifecycle-callbacks
+ * @type {function()}
+ */
+HTMLElement.prototype.attachedCallback;
+
+/**
+ * @see http://w3c.github.io/webcomponents/explainer/#lifecycle-callbacks
+ * @type {function()}
+ */
+HTMLElement.prototype.detachedCallback;
+
 /** @type {string} */
 HTMLAnchorElement.prototype.hash;
 
@@ -1132,6 +1191,16 @@ HTMLAnchorElement.prototype.hostname;
 /** @type {string} */
 HTMLAnchorElement.prototype.pathname;
 
+/**
+ * The 'ping' attribute is known to be supported in recent versions (as of
+ * mid-2014) of Chrome, Safari, and Firefox, and is not supported in any
+ * current version of Internet Explorer.
+ *
+ * @type {string}
+ * @see http://www.whatwg.org/specs/web-apps/current-work/multipage/semantics.html#hyperlink-auditing
+ */
+HTMLAnchorElement.prototype.ping;
+
 /** @type {string} */
 HTMLAnchorElement.prototype.port;
 
@@ -1140,6 +1209,18 @@ HTMLAnchorElement.prototype.protocol;
 
 /** @type {string} */
 HTMLAnchorElement.prototype.search;
+
+/**
+ * @type {string}
+ * @see http://www.whatwg.org/specs/web-apps/current-work/multipage/semantics.html#hyperlink-auditing
+ */
+HTMLAreaElement.prototype.ping;
+
+/**
+ * @type {string}
+ * @see http://www.w3.org/TR/html-markup/iframe.html#iframe.attrs.srcdoc
+ */
+HTMLIFrameElement.prototype.srcdoc;
 
 /** @type {string} */
 HTMLInputElement.prototype.autocomplete;
@@ -1263,6 +1344,12 @@ HTMLMediaElement.prototype.load = function() {};
  */
 HTMLMediaElement.prototype.canPlayType = function(type) {};
 
+/**
+ * Callback when the media is buffered and ready to play through.
+ * @type {function(!Event)}
+ */
+HTMLMediaElement.prototype.oncanplaythrough;
+
 /** @type {number} */
 HTMLMediaElement.prototype.readyState;
 
@@ -1276,10 +1363,10 @@ HTMLMediaElement.prototype.seeking;
 HTMLMediaElement.prototype.currentTime;
 
 /**
- * The start time, in seconds.
- * @type {number}
+ * The absolute timeline offset.
+ * @return {!Date}
  */
-HTMLMediaElement.prototype.startTime;
+HTMLMediaElement.prototype.getStartDate = function() {};
 
 /**
  * The length of the media in seconds.
@@ -1334,6 +1421,123 @@ HTMLMediaElement.prototype.volume;
 HTMLMediaElement.prototype.muted;
 
 /**
+ * @see http://www.whatwg.org/specs/web-apps/current-work/multipage/the-video-element.html#dom-media-addtexttrack
+ * @param {string} kind Kind of the text track.
+ * @param {string=} opt_label Label of the text track.
+ * @param {string=} opt_language Language of the text track.
+ * @return {TextTrack} TextTrack object added to the media element.
+ */
+HTMLMediaElement.prototype.addTextTrack =
+    function(kind, opt_label, opt_language) {};
+
+/** @type {TextTrackList} */
+HTMLMediaElement.prototype.textTracks;
+
+
+
+/**
+ * @see http://www.whatwg.org/specs/web-apps/current-work/multipage/the-video-element.html#texttracklist
+ * @constructor
+ */
+function TextTrackList() {}
+
+/** @type {number} */
+TextTrackList.prototype.length;
+
+/**
+ * @param {string} id
+ * @return {TextTrack}
+ */
+TextTrackList.prototype.getTrackById = function(id) {};
+
+
+/**
+ * @see http://www.whatwg.org/specs/web-apps/current-work/multipage/the-video-element.html#texttrack
+ * @constructor
+ * @implements {EventTarget}
+ */
+function TextTrack() {}
+
+/**
+ * @param {TextTrackCue} cue
+ */
+TextTrack.prototype.addCue = function(cue) {};
+
+/**
+ * @param {TextTrackCue} cue
+ */
+TextTrack.prototype.removeCue = function(cue) {};
+
+/**
+ * @const {TextTrackCueList}
+ */
+TextTrack.prototype.activeCues;
+
+/**
+ * @const {TextTrackCueList}
+ */
+TextTrack.prototype.cues;
+
+/** @override */
+TextTrack.prototype.addEventListener = function(type, listener, useCapture) {};
+
+/** @override */
+TextTrack.prototype.dispatchEvent = function(evt) {};
+
+/** @override */
+TextTrack.prototype.removeEventListener = function(type, listener, useCapture)
+    {};
+
+
+
+/**
+ * @see http://www.whatwg.org/specs/web-apps/current-work/multipage/the-video-element.html#texttrackcuelist
+ * @constructor
+ */
+function TextTrackCueList() {}
+
+/** @const {number} */
+TextTrackCueList.prototype.length;
+
+/**
+ * @param {string} id
+ * @return {TextTrackCue}
+ */
+TextTrackCueList.prototype.getCueById = function(id) {};
+
+
+
+/**
+ * @see http://www.whatwg.org/specs/web-apps/current-work/multipage/the-video-element.html#texttrackcue
+ * @constructor
+ * @param {number} startTime
+ * @param {number} endTime
+ * @param {string} text
+ */
+function TextTrackCue(startTime, endTime, text) {}
+
+/** @type {string} */
+TextTrackCue.prototype.id;
+
+/** @type {number} */
+TextTrackCue.prototype.startTime;
+
+/** @type {number} */
+TextTrackCue.prototype.endTime;
+
+/** @type {string} */
+TextTrackCue.prototype.text;
+
+
+/**
+ * @see http://dev.w3.org/html5/webvtt/#the-vttcue-interface
+ * @constructor
+ * @extends {TextTrackCue}
+ */
+function VTTCue(startTime, endTime, text) {}
+
+
+/**
  * @constructor
  * @extends {HTMLMediaElement}
  */
@@ -1342,6 +1546,8 @@ function HTMLAudioElement() {}
 /**
  * @constructor
  * @extends {HTMLMediaElement}
+ * The webkit-prefixed attributes are defined in
+ * https://code.google.com/p/chromium/codesearch#chromium/src/third_party/WebKit/Source/core/html/HTMLVideoElement.idl
  */
 function HTMLVideoElement() {}
 
@@ -1386,6 +1592,12 @@ HTMLVideoElement.prototype.webkitSupportsFullscreen;
 /** @type {boolean} */
 HTMLVideoElement.prototype.webkitDisplayingFullscreen;
 
+/** @type {number} */
+HTMLVideoElement.prototype.webkitDecodedFrameCount;
+
+/** @type {number} */
+HTMLVideoElement.prototype.webkitDroppedFrameCount;
+
 /**
  * @constructor
  */
@@ -1422,13 +1634,19 @@ MessageChannel.prototype.port2;
  */
 function MessagePort() {}
 
-/** @override */
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
 MessagePort.prototype.addEventListener = function(
-    type, listener, useCapture) {};
+    type, listener, opt_useCapture) {};
 
-/** @override */
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
 MessagePort.prototype.removeEventListener = function(
-    type, listener, useCapture) {};
+    type, listener, opt_useCapture) {};
 
 /** @override */
 MessagePort.prototype.dispatchEvent = function(evt) {};
@@ -1438,7 +1656,7 @@ MessagePort.prototype.dispatchEvent = function(evt) {};
  * Posts a message through the channel, optionally with the given
  * Array of Transferables.
  * @param {*} message
- * @param {Array.<Transferable>=} opt_transfer
+ * @param {Array.<!Transferable>=} opt_transfer
  */
 MessagePort.prototype.postMessage = function(message, opt_transfer) {
 };
@@ -1454,7 +1672,8 @@ MessagePort.prototype.start = function() {};
 MessagePort.prototype.close = function() {};
 
 /**
- * @type {?function(!MessageEvent)}
+ * TODO(blickly): Change this to MessageEvent.<*> and add casts as needed
+ * @type {?function(!MessageEvent.<?>)}
  */
 MessagePort.prototype.onmessage;
 
@@ -1463,12 +1682,13 @@ MessagePort.prototype.onmessage;
  * @see http://dev.w3.org/html5/spec/comms.html#messageevent
  * @constructor
  * @extends {Event}
+ * @template T
  */
 function MessageEvent() {}
 
 /**
  * The data payload of the message.
- * @type {*}
+ * @type {T}
  */
 MessageEvent.prototype.data;
 
@@ -1504,7 +1724,7 @@ MessageEvent.prototype.ports;
  * @param {string} typeArg
  * @param {boolean} canBubbleArg
  * @param {boolean} cancelableArg
- * @param {*} dataArg
+ * @param {T} dataArg
  * @param {string} originArg
  * @param {string} lastEventIdArg
  * @param {Window} sourceArg
@@ -1520,7 +1740,7 @@ MessageEvent.prototype.initMessageEvent = function(typeArg, canBubbleArg,
  * @param {string} typeArg
  * @param {boolean} canBubbleArg
  * @param {boolean} cancelableArg
- * @param {*} dataArg
+ * @param {T} dataArg
  * @param {string} originArg
  * @param {string} lastEventIdArg
  * @param {Window} sourceArg
@@ -1595,6 +1815,52 @@ DataTransfer.prototype.addElement = function(elem) {};
  * @type {DataTransfer}
  */
 MouseEvent.prototype.dataTransfer;
+
+/**
+ * @typedef {{
+ *   bubbles: (boolean|undefined),
+ *   cancelable: (boolean|undefined),
+ *   view: (Window|undefined),
+ *   detail: (number|undefined),
+ *   screenX: (number|undefined),
+ *   screenY: (number|undefined),
+ *   clientX: (number|undefined),
+ *   clientY: (number|undefined),
+ *   ctrlKey: (boolean|undefined),
+ *   shiftKey: (boolean|undefined),
+ *   altKey: (boolean|undefined),
+ *   metaKey: (boolean|undefined),
+ *   button: (number|undefined),
+ *   buttons: (number|undefined),
+ *   relatedTarget: (EventTarget|undefined),
+ *   deltaX: (number|undefined),
+ *   deltaY: (number|undefined),
+ *   deltaZ: (number|undefined),
+ *   deltaMode: (number|undefined)
+ * }}
+ */
+var WheelEventInit;
+
+/**
+ * @param {string} type
+ * @param {WheelEventInit=} opt_eventInitDict
+ * @see http://www.w3.org/TR/DOM-Level-3-Events/#interface-WheelEvent
+ * @constructor
+ * @extends {MouseEvent}
+ */
+var WheelEvent = function(type, opt_eventInitDict) {};
+
+/** @const {number} */
+WheelEvent.prototype.deltaX;
+
+/** @const {number} */
+WheelEvent.prototype.deltaY;
+
+/** @const {number} */
+WheelEvent.prototype.deltaZ;
+
+/** @const {number} */
+WheelEvent.prototype.deltaMode;
 
 /**
  * HTML5 DataTransferItem class.
@@ -1678,10 +1944,33 @@ DataTransfer.prototype.items;
 
 
 /**
+ * @see http://www.whatwg.org/specs/web-apps/current-work/multipage/dnd.html#the-dragevent-interface
  * @constructor
- * @extends {Event}
+ * @extends {MouseEvent}
  */
-function ProgressEvent() {}
+function DragEvent() {}
+
+/** @type {DataTransfer} */
+DragEvent.prototype.dataTransfer;
+
+
+/**
+ * @typedef {{
+ *   lengthComputable: (boolean|undefined),
+ *   loaded: (number|undefined),
+ *   total: (number|undefined)
+ * }}
+ */
+var ProgressEventInit;
+
+/**
+ * @constructor
+ * @param {string} type
+ * @param {ProgressEventInit=} opt_progressEventInitDict
+ * @extends {Event}
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/ProgressEvent
+ */
+function ProgressEvent(type, opt_progressEventInitDict) {}
 
 /** @type {number} */
 ProgressEvent.prototype.total;
@@ -1726,13 +2015,19 @@ TimeRanges.prototype.end = function(index) { return 0; };
  */
 function WebSocket(url, opt_protocol) {}
 
-/** @override */
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
 WebSocket.prototype.addEventListener = function(
-    type, listener, useCapture) {};
+    type, listener, opt_useCapture) {};
 
-/** @override */
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
 WebSocket.prototype.removeEventListener = function(
-    type, listener, useCapture) {};
+    type, listener, opt_useCapture) {};
 
 /** @override */
 WebSocket.prototype.dispatchEvent = function(evt) {};
@@ -1781,7 +2076,8 @@ WebSocket.prototype.onopen;
 
 /**
  * An event handler called on message event.
- * @type {?function(!MessageEvent)}
+ * TODO(blickly): Change this to MessageEvent.<*> and add casts as needed
+ * @type {?function(!MessageEvent.<?>)}
  */
 WebSocket.prototype.onmessage;
 
@@ -1793,7 +2089,7 @@ WebSocket.prototype.onclose;
 
 /**
  * Transmits data using the connection.
- * @param {string|ArrayBuffer} data
+ * @param {string|ArrayBuffer|ArrayBufferView} data
  * @return {boolean}
  */
 WebSocket.prototype.send = function(data) {};
@@ -1835,11 +2131,14 @@ History.prototype.replaceState = function(data, title, opt_url) {};
 History.prototype.state;
 
 /**
- * @see http://www.w3.org/TR/html5/history.html#event-definitions
+ * @see http://www.whatwg.org/specs/web-apps/current-work/#popstateevent
  * @constructor
  * @extends {Event}
+ *
+ * @param {string} type
+ * @param {{state: *}=} opt_eventInitDict
  */
-function PopStateEvent() {}
+function PopStateEvent(type, opt_eventInitDict) {}
 
 /**
  * @type {*}
@@ -1857,11 +2156,14 @@ PopStateEvent.prototype.initPopStateEvent = function(typeArg, canBubbleArg,
     cancelableArg, stateArg) {};
 
 /**
- * @see http://www.w3.org/TR/html5/history.html#event-definitions
+ * @see http://www.whatwg.org/specs/web-apps/current-work/#hashchangeevent
  * @constructor
  * @extends {Event}
+ *
+ * @param {string} type
+ * @param {{oldURL: string, newURL: string}=} opt_eventInitDict
  */
-function HashChangeEvent() {}
+function HashChangeEvent(type, opt_eventInitDict) {}
 
 /** @type {string} */
 HashChangeEvent.prototype.oldURL;
@@ -1881,11 +2183,14 @@ HashChangeEvent.prototype.initHashChangeEvent = function(typeArg, canBubbleArg,
     cancelableArg, oldURLArg, newURLArg) {};
 
 /**
- * @see http://www.w3.org/TR/html5/history.html#event-definitions
+ * @see http://www.whatwg.org/specs/web-apps/current-work/#pagetransitionevent
  * @constructor
  * @extends {Event}
+ *
+ * @param {string} type
+ * @param {{persisted: boolean}=} opt_eventInitDict
  */
-function PageTransitionEvent() {}
+function PageTransitionEvent(type, opt_eventInitDict) {}
 
 /** @type {boolean} */
 PageTransitionEvent.prototype.persisted;
@@ -1971,9 +2276,14 @@ DOMTokenList.prototype.remove = function(token) {};
 
 /**
  * @param {string} token The CSS class to toggle from this element.
+ * @param {boolean=} opt_force True to add the class whether it exists
+ *     or not. False to remove the class whether it exists or not.
+ *     This argument is not supported on IE 10 and below, according to
+ *     the MDN page linked below.
  * @return {boolean} False if the token was removed; True otherwise.
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/Element.classList
  */
-DOMTokenList.prototype.toggle = function(token) {};
+DOMTokenList.prototype.toggle = function(token, opt_force) {};
 
 /**
  * @return {string} A stringified representation of CSS classes.
@@ -1989,544 +2299,6 @@ DOMTokenList.prototype.toString = function() {};
  * @const
  */
 HTMLElement.prototype.classList;
-
-
-/**
- * @param {number} length The length in bytes
- * @constructor
- * @noalias
- * @throws {Error}
- * @nosideeffects
- * @implements {Transferable}
- */
-function ArrayBuffer(length) {}
-
-/** @type {number} */
-ArrayBuffer.prototype.byteLength;
-
-/**
- * @param {number} begin
- * @param {number=} opt_end
- * @return {!ArrayBuffer}
- * @nosideeffects
- */
-ArrayBuffer.prototype.slice = function(begin, opt_end) {};
-
-
-/**
- * @constructor
- * @noalias
- */
-function ArrayBufferView() {}
-
-/** @type {!ArrayBuffer} */
-ArrayBufferView.prototype.buffer;
-
-/** @type {number} */
-ArrayBufferView.prototype.byteOffset;
-
-/** @type {number} */
-ArrayBufferView.prototype.byteLength;
-
-
-/**
- * @param {number|ArrayBufferView|Array.<number>|ArrayBuffer} length or array
- *     or buffer
- * @param {number=} opt_byteOffset
- * @param {number=} opt_length
- * @extends {ArrayBufferView}
- * @constructor
- * @noalias
- * @throws {Error}
- * @modifies {arguments} If the user passes a backing array, then indexed
- *     accesses will modify the backing array. JSCompiler does not model
- *     this well. In other words, if you have:
- *     <code>
- *     var x = new ArrayBuffer(1);
- *     var y = new Int8Array(x);
- *     y[0] = 2;
- *     </code>
- *     JSCompiler will not recognize that the last assignment modifies x.
- *     We workaround this by marking all these arrays as @modifies {arguments},
- *     to introduce the possibility that x aliases y.
- */
-function Int8Array(length, opt_byteOffset, opt_length) {}
-
-/** @type {number} */
-Int8Array.BYTES_PER_ELEMENT;
-
-/** @type {number} */
-Int8Array.prototype.BYTES_PER_ELEMENT;
-
-/** @type {number} */
-Int8Array.prototype.length;
-
-/**
- * @param {ArrayBufferView|Array.<number>} array
- * @param {number=} opt_offset
- */
-Int8Array.prototype.set = function(array, opt_offset) {};
-
-/**
- * @param {number} begin
- * @param {number=} opt_end
- * @return {!Int8Array}
- * @nosideeffects
- */
-Int8Array.prototype.subarray = function(begin, opt_end) {};
-
-
-/**
- * @param {number|ArrayBufferView|Array.<number>|ArrayBuffer} length or array
- *     or buffer
- * @param {number=} opt_byteOffset
- * @param {number=} opt_length
- * @extends {ArrayBufferView}
- * @constructor
- * @noalias
- * @throws {Error}
- * @modifies {arguments}
- */
-function Uint8Array(length, opt_byteOffset, opt_length) {}
-
-/** @type {number} */
-Uint8Array.BYTES_PER_ELEMENT;
-
-/** @type {number} */
-Uint8Array.prototype.BYTES_PER_ELEMENT;
-
-/** @type {number} */
-Uint8Array.prototype.length;
-
-/**
- * @param {ArrayBufferView|Array.<number>} array
- * @param {number=} opt_offset
- */
-Uint8Array.prototype.set = function(array, opt_offset) {};
-
-/**
- * @param {number} begin
- * @param {number=} opt_end
- * @return {!Uint8Array}
- * @nosideeffects
- */
-Uint8Array.prototype.subarray = function(begin, opt_end) {};
-
-
-/**
- * @param {number|ArrayBufferView|Array.<number>|ArrayBuffer} length or array
- *     or buffer
- * @param {number=} opt_byteOffset
- * @param {number=} opt_length
- * @extends {ArrayBufferView}
- * @constructor
- * @noalias
- * @throws {Error}
- * @modifies {arguments}
- */
-function Uint8ClampedArray(length, opt_byteOffset, opt_length) {}
-
-/** @type {number} */
-Uint8ClampedArray.BYTES_PER_ELEMENT;
-
-/** @type {number} */
-Uint8ClampedArray.prototype.BYTES_PER_ELEMENT;
-
-/** @type {number} */
-Uint8ClampedArray.prototype.length;
-
-/**
- * @param {ArrayBufferView|Array.<number>} array
- * @param {number=} opt_offset
- */
-Uint8ClampedArray.prototype.set = function(array, opt_offset) {};
-
-/**
- * @param {number} begin
- * @param {number=} opt_end
- * @return {!Uint8ClampedArray}
- * @nosideeffects
- */
-Uint8ClampedArray.prototype.subarray = function(begin, opt_end) {};
-
-
-/**
- * @typedef {Uint8ClampedArray}
- * @deprecated CanvasPixelArray has been replaced by Uint8ClampedArray
- *     in the latest spec.
- * @see http://www.w3.org/TR/2dcontext/#imagedata
- */
-var CanvasPixelArray;
-
-
-/**
- * @param {number|ArrayBufferView|Array.<number>|ArrayBuffer} length or array
- *     or buffer
- * @param {number=} opt_byteOffset
- * @param {number=} opt_length
- * @extends {ArrayBufferView}
- * @constructor
- * @noalias
- * @throws {Error}
- * @modifies {arguments}
- */
-function Int16Array(length, opt_byteOffset, opt_length) {}
-
-/** @type {number} */
-Int16Array.BYTES_PER_ELEMENT;
-
-/** @type {number} */
-Int16Array.prototype.BYTES_PER_ELEMENT;
-
-/** @type {number} */
-Int16Array.prototype.length;
-
-/**
- * @param {ArrayBufferView|Array.<number>} array
- * @param {number=} opt_offset
- */
-Int16Array.prototype.set = function(array, opt_offset) {};
-
-/**
- * @param {number} begin
- * @param {number=} opt_end
- * @return {!Int16Array}
- * @nosideeffects
- */
-Int16Array.prototype.subarray = function(begin, opt_end) {};
-
-
-/**
- * @param {number|ArrayBufferView|Array.<number>|ArrayBuffer} length or array
- *     or buffer
- * @param {number=} opt_byteOffset
- * @param {number=} opt_length
- * @extends {ArrayBufferView}
- * @constructor
- * @noalias
- * @throws {Error}
- * @modifies {arguments}
- */
-function Uint16Array(length, opt_byteOffset, opt_length) {}
-
-/** @type {number} */
-Uint16Array.BYTES_PER_ELEMENT;
-
-/** @type {number} */
-Uint16Array.prototype.BYTES_PER_ELEMENT;
-
-/** @type {number} */
-Uint16Array.prototype.length;
-
-/**
- * @param {ArrayBufferView|Array.<number>} array
- * @param {number=} opt_offset
- */
-Uint16Array.prototype.set = function(array, opt_offset) {};
-
-/**
- * @param {number} begin
- * @param {number=} opt_end
- * @return {!Uint16Array}
- * @nosideeffects
- */
-Uint16Array.prototype.subarray = function(begin, opt_end) {};
-
-
-/**
- * @param {number|ArrayBufferView|Array.<number>|ArrayBuffer} length or array
- *     or buffer
- * @param {number=} opt_byteOffset
- * @param {number=} opt_length
- * @extends {ArrayBufferView}
- * @constructor
- * @noalias
- * @throws {Error}
- * @modifies {arguments}
- */
-function Int32Array(length, opt_byteOffset, opt_length) {}
-
-/** @type {number} */
-Int32Array.BYTES_PER_ELEMENT;
-
-/** @type {number} */
-Int32Array.prototype.BYTES_PER_ELEMENT;
-
-/** @type {number} */
-Int32Array.prototype.length;
-
-/**
- * @param {ArrayBufferView|Array.<number>} array
- * @param {number=} opt_offset
- */
-Int32Array.prototype.set = function(array, opt_offset) {};
-
-/**
- * @param {number} begin
- * @param {number=} opt_end
- * @return {!Int32Array}
- * @nosideeffects
- */
-Int32Array.prototype.subarray = function(begin, opt_end) {};
-
-
-/**
- * @param {number|ArrayBufferView|Array.<number>|ArrayBuffer} length or array
- *     or buffer
- * @param {number=} opt_byteOffset
- * @param {number=} opt_length
- * @extends {ArrayBufferView}
- * @constructor
- * @noalias
- * @throws {Error}
- * @modifies {arguments}
- */
-function Uint32Array(length, opt_byteOffset, opt_length) {}
-
-/** @type {number} */
-Uint32Array.BYTES_PER_ELEMENT;
-
-/** @type {number} */
-Uint32Array.prototype.BYTES_PER_ELEMENT;
-
-/** @type {number} */
-Uint32Array.prototype.length;
-
-/**
- * @param {ArrayBufferView|Array.<number>} array
- * @param {number=} opt_offset
- */
-Uint32Array.prototype.set = function(array, opt_offset) {};
-
-/**
- * @param {number} begin
- * @param {number=} opt_end
- * @return {!Uint32Array}
- * @nosideeffects
- */
-Uint32Array.prototype.subarray = function(begin, opt_end) {};
-
-
-/**
- * @param {number|ArrayBufferView|Array.<number>|ArrayBuffer} length or array
- *     or buffer
- * @param {number=} opt_byteOffset
- * @param {number=} opt_length
- * @extends {ArrayBufferView}
- * @constructor
- * @noalias
- * @throws {Error}
- * @modifies {arguments}
- */
-function Float32Array(length, opt_byteOffset, opt_length) {}
-
-/** @type {number} */
-Float32Array.BYTES_PER_ELEMENT;
-
-/** @type {number} */
-Float32Array.prototype.BYTES_PER_ELEMENT;
-
-/** @type {number} */
-Float32Array.prototype.length;
-
-/**
- * @param {ArrayBufferView|Array.<number>} array
- * @param {number=} opt_offset
- */
-Float32Array.prototype.set = function(array, opt_offset) {};
-
-/**
- * @param {number} begin
- * @param {number=} opt_end
- * @return {!Float32Array}
- * @nosideeffects
- */
-Float32Array.prototype.subarray = function(begin, opt_end) {};
-
-
-/**
- * @param {number|ArrayBufferView|Array.<number>|ArrayBuffer} length or array
- *     or buffer
- * @param {number=} opt_byteOffset
- * @param {number=} opt_length
- * @extends {ArrayBufferView}
- * @constructor
- * @noalias
- * @throws {Error}
- * @modifies {arguments}
- */
-function Float64Array(length, opt_byteOffset, opt_length) {}
-
-/** @type {number} */
-Float64Array.BYTES_PER_ELEMENT;
-
-/** @type {number} */
-Float64Array.prototype.BYTES_PER_ELEMENT;
-
-/** @type {number} */
-Float64Array.prototype.length;
-
-/**
- * @param {ArrayBufferView|Array.<number>} array
- * @param {number=} opt_offset
- */
-Float64Array.prototype.set = function(array, opt_offset) {};
-
-/**
- * @param {number} begin
- * @param {number=} opt_end
- * @return {!Float64Array}
- * @nosideeffects
- */
-Float64Array.prototype.subarray = function(begin, opt_end) {};
-
-
-/**
- * @param {ArrayBuffer} buffer
- * @param {number=} opt_byteOffset
- * @param {number=} opt_byteLength
- * @extends {ArrayBufferView}
- * @constructor
- * @noalias
- * @throws {Error}
- * @nosideeffects
- * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Typed_arrays/DataView
- */
-function DataView(buffer, opt_byteOffset, opt_byteLength) {}
-
-/**
- * @param {number} byteOffset
- * @return {number}
- * @throws {Error}
- * @nosideeffects
- */
-DataView.prototype.getInt8 = function(byteOffset) {};
-
-/**
- * @param {number} byteOffset
- * @return {number}
- * @throws {Error}
- * @nosideeffects
- */
-DataView.prototype.getUint8 = function(byteOffset) {};
-
-/**
- * @param {number} byteOffset
- * @param {boolean=} opt_littleEndian
- * @return {number}
- * @throws {Error}
- * @nosideeffects
- */
-DataView.prototype.getInt16 = function(byteOffset, opt_littleEndian) {};
-
-/**
- * @param {number} byteOffset
- * @param {boolean=} opt_littleEndian
- * @return {number}
- * @throws {Error}
- * @nosideeffects
- */
-DataView.prototype.getUint16 = function(byteOffset, opt_littleEndian) {};
-
-/**
- * @param {number} byteOffset
- * @param {boolean=} opt_littleEndian
- * @return {number}
- * @throws {Error}
- * @nosideeffects
- */
-DataView.prototype.getInt32 = function(byteOffset, opt_littleEndian) {};
-
-/**
- * @param {number} byteOffset
- * @param {boolean=} opt_littleEndian
- * @return {number}
- * @throws {Error}
- * @nosideeffects
- */
-DataView.prototype.getUint32 = function(byteOffset, opt_littleEndian) {};
-
-/**
- * @param {number} byteOffset
- * @param {boolean=} opt_littleEndian
- * @return {number}
- * @throws {Error}
- * @nosideeffects
- */
-DataView.prototype.getFloat32 = function(byteOffset, opt_littleEndian) {};
-
-/**
- * @param {number} byteOffset
- * @param {boolean=} opt_littleEndian
- * @return {number}
- * @throws {Error}
- * @nosideeffects
- */
-DataView.prototype.getFloat64 = function(byteOffset, opt_littleEndian) {};
-
-/**
- * @param {number} byteOffset
- * @param {number} value
- * @throws {Error}
- */
-DataView.prototype.setInt8 = function(byteOffset, value) {};
-
-/**
- * @param {number} byteOffset
- * @param {number} value
- * @throws {Error}
- */
-DataView.prototype.setUint8 = function(byteOffset, value) {};
-
-/**
- * @param {number} byteOffset
- * @param {number} value
- * @param {boolean=} opt_littleEndian
- * @throws {Error}
- */
-DataView.prototype.setInt16 = function(byteOffset, value, opt_littleEndian) {};
-
-/**
- * @param {number} byteOffset
- * @param {number} value
- * @param {boolean=} opt_littleEndian
- * @throws {Error}
- */
-DataView.prototype.setUint16 = function(byteOffset, value, opt_littleEndian) {};
-
-/**
- * @param {number} byteOffset
- * @param {number} value
- * @param {boolean=} opt_littleEndian
- * @throws {Error}
- */
-DataView.prototype.setInt32 = function(byteOffset, value, opt_littleEndian) {};
-
-/**
- * @param {number} byteOffset
- * @param {number} value
- * @param {boolean=} opt_littleEndian
- * @throws {Error}
- */
-DataView.prototype.setUint32 = function(byteOffset, value, opt_littleEndian) {};
-
-/**
- * @param {number} byteOffset
- * @param {number} value
- * @param {boolean=} opt_littleEndian
- * @throws {Error}
- */
-DataView.prototype.setFloat32 = function(
-    byteOffset, value, opt_littleEndian) {};
-
-/**
- * @param {number} byteOffset
- * @param {number} value
- * @param {boolean=} opt_littleEndian
- * @throws {Error}
- */
-DataView.prototype.setFloat64 = function(
-    byteOffset, value, opt_littleEndian) {};
 
 /**
  * Web Cryptography API
@@ -2553,7 +2325,7 @@ Window.prototype.crypto.getRandomValues = function(typedArray) {};
 HTMLFormElement.prototype.checkValidity = function() {};
 
 /** @type {boolean} */
-HTMLFormElement.prototype.novalidate;
+HTMLFormElement.prototype.noValidate;
 
 /** @constructor */
 function ValidityState() {}
@@ -2613,11 +2385,59 @@ HTMLButtonElement.prototype.checkValidity = function() {};
 /** @param {string} message */
 HTMLButtonElement.prototype.setCustomValidity = function(message) {};
 
+/**
+ * @type {string}
+ * @see http://www.w3.org/TR/html5/forms.html#attr-fs-formaction
+ */
+HTMLButtonElement.prototype.formAction;
+
+/**
+ * @type {string}
+ * @see http://www.w3.org/TR/html5/forms.html#attr-fs-formenctype
+ */
+HTMLButtonElement.prototype.formEnctype;
+
+/**
+ * @type {string}
+ * @see http://www.w3.org/TR/html5/forms.html#attr-fs-formmethod
+ */
+HTMLButtonElement.prototype.formMethod;
+
+/**
+ * @type {string}
+ * @see http://www.w3.org/TR/html5/forms.html#attr-fs-formtarget
+ */
+HTMLButtonElement.prototype.formTarget;
+
 /** @type {boolean} */
 HTMLInputElement.prototype.autofocus;
 
 /** @type {boolean} */
 HTMLInputElement.prototype.formNoValidate;
+
+/**
+ * @type {string}
+ * @see http://www.w3.org/TR/html5/forms.html#attr-fs-formaction
+ */
+HTMLInputElement.prototype.formAction;
+
+/**
+ * @type {string}
+ * @see http://www.w3.org/TR/html5/forms.html#attr-fs-formenctype
+ */
+HTMLInputElement.prototype.formEnctype;
+
+/**
+ * @type {string}
+ * @see http://www.w3.org/TR/html5/forms.html#attr-fs-formmethod
+ */
+HTMLInputElement.prototype.formMethod;
+
+/**
+ * @type {string}
+ * @see http://www.w3.org/TR/html5/forms.html#attr-fs-formtarget
+ */
+HTMLInputElement.prototype.formTarget;
 
 /**
  * @const
@@ -2810,12 +2630,19 @@ Document.prototype.webkitCancelFullScreen = function() {};
 /** @type {Element} */
 Document.prototype.webkitCurrentFullScreenElement;
 
+/** @type {Element} */
+Document.prototype.webkitFullscreenElement;
+
 /** @type {boolean} */
 Document.prototype.webkitFullScreenKeyboardInputAllowed;
 
 // IE 11 implementation.
 // http://msdn.microsoft.com/en-us/library/ie/dn265028(v=vs.85).aspx
+/** @return {void} */
 Element.prototype.msRequestFullscreen = function() {};
+
+/** @return {void} */
+Element.prototype.msExitFullscreen = function() {};
 
 /** @type {boolean} */
 Document.prototype.msFullscreenEnabled;
@@ -2888,7 +2715,7 @@ MutationRecord.prototype.oldValue;
 
 /**
  * @see http://www.w3.org/TR/domcore/#mutation-observers
- * @param {function(Array.<MutationRecord>)} callback
+ * @param {function(Array.<MutationRecord>, MutationObserver)} callback
  * @constructor
  */
 function MutationObserver(callback) {}
@@ -2900,11 +2727,6 @@ function MutationObserver(callback) {}
 MutationObserver.prototype.observe = function(target, options) {};
 
 MutationObserver.prototype.disconnect = function() {};
-
-/**
- * @type {function(new:MutationObserver, function(Array.<MutationRecord>))}
- */
-Window.prototype.MutationObserver;
 
 /**
  * @type {function(new:MutationObserver, function(Array.<MutationRecord>))}
@@ -2968,15 +2790,173 @@ Document.prototype.webkitHidden;
 Document.prototype.msHidden;
 
 /**
- * @param {string=} title
- * @return {HTMLDocument}
- * @see http://dom.spec.whatwg.org/#dom-domimplementation-createhtmldocument
- * @nosideeffects
+ * @see http://www.w3.org/TR/components-intro/
+ * @see http://w3c.github.io/webcomponents/spec/custom/#extensions-to-document-interface-to-register
+ * @param {string} type
+ * @param {{extends: (string|undefined), prototype: (Object|undefined)}} options
  */
-DOMImplementation.prototype.createHTMLDocument = function(title) {};
+Document.prototype.registerElement;
 
 /**
- * @see https://github.com/promises-aplus/promises-spec
- * @typedef {{then: !Function}}
+ * This method is deprecated and should be removed by the end of 2014.
+ * @see http://www.w3.org/TR/components-intro/
+ * @see http://w3c.github.io/webcomponents/spec/custom/#extensions-to-document-interface-to-register
+ * @param {string} type
+ * @param {{extends: (string|undefined), prototype: (Object|undefined)}} options
  */
-var Thenable;
+Document.prototype.register;
+
+/**
+ * @type {!FontFaceSet}
+ * @see http://dev.w3.org/csswg/css-font-loading/#dom-fontfacesource-fonts
+ */
+Document.prototype.fonts;
+
+
+/**
+ * Definition of ShadowRoot interface,
+ * @see http://www.w3.org/TR/shadow-dom/#api-shadow-root
+ * @constructor
+ * @extends {DocumentFragment}
+ */
+function ShadowRoot() {}
+
+/**
+ * The host element that a ShadowRoot is attached to.
+ * Note: this is not yet W3C standard but is undergoing development.
+ * W3C feature tracking bug:
+ * https://www.w3.org/Bugs/Public/show_bug.cgi?id=22399
+ * Draft specification:
+ * https://dvcs.w3.org/hg/webcomponents/raw-file/6743f1ace623/spec/shadow/index.html#shadow-root-object
+ * @type {!Element}
+ */
+ShadowRoot.prototype.host;
+
+/**
+ * @param {string} id id.
+ * @return {HTMLElement}
+ * @nosideeffects
+ */
+ShadowRoot.prototype.getElementById = function(id) {};
+
+
+/**
+ * @param {string} className
+ * @return {!NodeList}
+ * @nosideeffects
+ */
+ShadowRoot.prototype.getElementsByClassName = function(className) {};
+
+
+/**
+ * @param {string} tagName
+ * @return {!NodeList}
+ * @nosideeffects
+ */
+ShadowRoot.prototype.getElementsByTagName = function(tagName) {};
+
+
+/**
+ * @param {string} namespace
+ * @param {string} localName
+ * @return {!NodeList}
+ * @nosideeffects
+ */
+ShadowRoot.prototype.getElementsByTagNameNS = function(namespace, localName) {};
+
+
+/**
+ * @return {Selection}
+ * @nosideeffects
+ */
+ShadowRoot.prototype.getSelection = function() {};
+
+
+/**
+ * @param {number} x
+ * @param {number} y
+ * @return {Element}
+ * @nosideeffects
+ */
+ShadowRoot.prototype.elementFromPoint = function(x, y) {};
+
+
+/**
+ * @type {boolean}
+ */
+ShadowRoot.prototype.applyAuthorStyles;
+
+
+/**
+ * @type {boolean}
+ */
+ShadowRoot.prototype.resetStyleInheritance;
+
+
+/**
+ * @type {Element}
+ */
+ShadowRoot.prototype.activeElement;
+
+
+/**
+ * @type {string}
+ */
+ShadowRoot.prototype.innerHTML;
+
+
+/**
+ * @type {!StyleSheetList}
+ */
+ShadowRoot.prototype.styleSheets;
+
+
+
+/**
+ * @see http://www.w3.org/TR/html5/webappapis.html#the-errorevent-interface
+ *
+ * @constructor
+ * @extends {Event}
+ *
+ * @param {string} type
+ * @param {ErrorEventInit=} opt_eventInitDict
+ */
+function ErrorEvent(type, opt_eventInitDict) {}
+
+/** @const {string} */
+ErrorEvent.prototype.message;
+
+/** @const {string} */
+ErrorEvent.prototype.filename;
+
+/** @const {number} */
+ErrorEvent.prototype.lineno;
+
+/** @const {number} */
+ErrorEvent.prototype.colno;
+
+/** @const {*} */
+ErrorEvent.prototype.error;
+
+
+/**
+ * @see http://www.w3.org/TR/html5/webappapis.html#the-errorevent-interface
+ *
+ * @typedef {{
+ *   bubbles: (boolean|undefined),
+ *   cancelable: (boolean|undefined),
+ *   message: string,
+ *   filename: string,
+ *   lineno: number,
+ *   colno: number,
+ *   error: *
+ * }}
+ */
+var ErrorEventInit;
+
+/**
+ * @see http://dom.spec.whatwg.org/#dom-domimplementation-createhtmldocument
+ * @param {string=} opt_title A title to give the new HTML document
+ * @return {!HTMLDocument}
+ */
+DOMImplementation.prototype.createHTMLDocument = function(opt_title) {};

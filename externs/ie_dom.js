@@ -23,6 +23,7 @@
  * it in gecko_dom.js
  *
  * @externs
+ * @author stevey@google.com (Steve Yegge)
  */
 
 // TODO(nicksantos): Rewrite all the DOM interfaces as interfaces, instead
@@ -296,9 +297,6 @@ ClipboardData.prototype.setData = function(type, data) {};
  */
 ClipboardData.prototype.getData = function(type) { };
 
-/** @type {function(new:ActiveXObject, string, string=)} */
-Window.prototype.ActiveXObject;
-
 /**
  * @param {number|undefined|null} immediateID
  * @see https://developer.mozilla.org/en-US/docs/DOM/window.clearImmediate
@@ -371,18 +369,6 @@ Window.prototype.screenLeft;
  */
 Window.prototype.screenTop;
 
-/**
- * @type {function(new:XDomainRequest)}
- * @see http://msdn.microsoft.com/en-us/library/cc287985(VS.85).aspx
- */
-Window.prototype.XDomainRequest;
-
-/**
- * @type {function(new:XMLHttpRequest)}
- * @see http://msdn.microsoft.com/en-us/library/ms535157(VS.85).aspx
- */
-Window.prototype.XMLHttpRequest;
-
 // Functions
 
 /**
@@ -399,6 +385,8 @@ Window.prototype.attachEvent = function (event, handler) {};
 Window.prototype.createPopup;
 
 /**
+ * @param {string} event
+ * @param {Function} handler
  * @see http://msdn.microsoft.com/en-us/library/ms536411(VS.85).aspx
  * @param {string} evtType
  * @param {Function} fn
@@ -451,14 +439,6 @@ Window.prototype.open = function(opt_url, opt_windowName, opt_windowFeatures,
 Window.prototype.print = function() {};
 
 /**
- * @param {string} message
- * @param {string=} opt_defValue
- * @return {?string}
- * @see http://msdn.microsoft.com/en-us/library/ms536673(VS.85).aspx
- */
-Window.prototype.prompt = function(message, opt_defValue) {};
-
-/**
  * @param {number} width
  * @param {number} height
  * @see http://msdn.microsoft.com/en-us/library/ms536722(VS.85).aspx
@@ -498,7 +478,7 @@ Window.prototype.showModelessDialog;
 
 /**
  * @see http://msdn.microsoft.com/en-us/library/ms535246%28v=vs.85%29.aspx
- * @const
+ * @const {!Object}
  */
 Window.prototype.external;
 
@@ -562,6 +542,31 @@ HTMLIFrameElement.prototype.contentWindow;
  * @see http://msdn.microsoft.com/en-us/library/ms536385(VS.85).aspx
  */
 HTMLBodyElement.prototype.createControlRange;
+
+/**
+ * @type {string}
+ * @see http://msdn.microsoft.com/en-us/library/ms534359(VS.85).aspx
+ */
+HTMLScriptElement.prototype.readyState;
+
+/**
+ * @type {string}
+ * @see http://msdn.microsoft.com/en-us/library/ms534359(VS.85).aspx
+ */
+HTMLIFrameElement.prototype.readyState;
+
+/**
+ * @type {string}
+ * @see http://msdn.microsoft.com/en-us/library/ms534359(VS.85).aspx
+ */
+HTMLImageElement.prototype.readyState;
+
+/**
+ * @type {string}
+ * @see http://msdn.microsoft.com/en-us/library/ms534359(VS.85).aspx
+ */
+HTMLObjectElement.prototype.readyState;
+
 
 /**
  * @constructor
@@ -859,7 +864,7 @@ Document.prototype.protocol;
  * @type {string}
  * @see http://msdn.microsoft.com/en-us/library/ms534359(VS.85).aspx
  */
-Document.prototype.readyState;
+HTMLDocument.prototype.readyState;
 
 /**
  * @type {Selection}
@@ -871,11 +876,6 @@ Document.prototype.selection;
  * @see http://msdn.microsoft.com/en-us/library/ms534704(VS.85).aspx
  */
 Document.prototype.uniqueID;
-
-/**
- * @see http://msdn.microsoft.com/en-us/library/ms534708(VS.85).aspx
- */
-Document.prototype.URL;
 
 /**
  * @see http://msdn.microsoft.com/en-us/library/ms534709(VS.85).aspx
@@ -913,6 +913,8 @@ Document.prototype.createEventObject;
 Document.prototype.createStyleSheet;
 
 /**
+ * @param {string} event
+ * @param {Function} handler
  * @see http://msdn.microsoft.com/en-us/library/ms536411(VS.85).aspx
  * @param {string} evtType
  * @param {Function} fn
@@ -970,11 +972,6 @@ Document.prototype.childNodes;
 Document.prototype.frames;
 
 /**
- * @see http://msdn.microsoft.com/en-us/library/ms537461(VS.85).aspx
- */
-Document.prototype.images;
-
-/**
  * @see http://msdn.microsoft.com/en-us/library/ms537470(VS.85).aspx
  * @type {DocumentNamespaces}
  */
@@ -1024,13 +1021,6 @@ Element.prototype.classid;
  */
 Element.prototype.componentFromPoint = function(iCoordX, iCoordY) {};
 
-/**
- * @param {Element} el The element to check
- * @return {boolean} If the element is contained within this one.
- * @see http://msdn.microsoft.com/en-us/library/ms536377(VS.85).aspx
- * @nosideeffects
- */
-Element.prototype.contains = function(el) {};
 
 /**
  * @type {boolean}
@@ -1054,7 +1044,7 @@ Element.prototype.currentStyle;
 /**
  * @param {string} event
  * @param {Function} handler
- * @see http://msdn.microsoft.com/en-us/library/mm536343(v=vs.85).aspx
+ * @see http://msdn.microsoft.com/en-us/library/ie/ms536411(v=vs.85).aspx
  */
 Element.prototype.detachEvent = function (event, handler) { };;
 
@@ -1089,6 +1079,12 @@ Element.prototype.innerText;
  * @see http://msdn.microsoft.com/en-us/library/ms537838(VS.85).aspx
  */
 Element.prototype.isContentEditable;
+
+/**
+ * @see http://msdn.microsoft.com/en-us/library/ms531395(v=vs.85).aspx
+ * NOTE: Left untyped to avoid conflict with subclasses.
+ */
+Element.prototype.load;
 
 /**
  * @param {number} pointerId Id of the pointer that is assign to the element.
@@ -1133,12 +1129,6 @@ Element.prototype.onselectstart;
 Element.prototype.outerHTML;
 
 /**
- * @type {string}
- * @see http://msdn.microsoft.com/en-us/library/ms534359(VS.85).aspx
- */
-Element.prototype.readyState;
-
-/**
  * @see http://msdn.microsoft.com/en-us/library/ms536689(VS.85).aspx
  */
 Element.prototype.releaseCapture = function() {};
@@ -1155,6 +1145,13 @@ Element.prototype.removeBehavior = function(iID) {};
  * @see http://msdn.microsoft.com/en-us/library/aa703996(VS.85).aspx
  */
 Element.prototype.runtimeStyle;
+
+/**
+ * @param {string} sStoreName The arbitrary name assigned to a persistent object
+ *     in a UserData store.
+ * @see http://msdn.microsoft.com/en-us/library/ms531403(v=vs.85).aspx
+ */
+Element.prototype.save = function(sStoreName) {};
 
 /**
  * @param {boolean=} opt_bContainerCapture Events originating in a container are
@@ -2721,3 +2718,14 @@ Namespace.prototype.readyState;
 
 /** @type {string} */
 Namespace.prototype.urn;
+
+ * @type {number}
+ * @see http://msdn.microsoft.com/en-us/library/ms534128%28v=vs.85%29.aspx
+ */
+Screen.prototype.logicalXDPI;
+
+/**
+ * @type {number}
+ * @see http://msdn.microsoft.com/en-us/library/ms534130%28v=vs.85%29.aspx
+ */
+Screen.prototype.logicalYDPI;

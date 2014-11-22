@@ -20,6 +20,7 @@
  *  http://www.w3.org/TR/REC-DOM-Level-1/ecma-script-language-binding.html
  *
  * @externs
+ * @author stevey@google.com (Steve Yegge)
  */
 
 /**
@@ -116,11 +117,17 @@ DOMImplementation.prototype.hasFeature = function(feature, version) {};
  */
 function Node() {}
 
-/** @override */
-Node.prototype.addEventListener = function(type, listener, useCapture) {};
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
+Node.prototype.addEventListener = function(type, listener, opt_useCapture) {};
 
-/** @override */
-Node.prototype.removeEventListener = function(type, listener, useCapture) {};
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
+Node.prototype.removeEventListener = function(type, listener, opt_useCapture) {};
 
 /** @override */
 Node.prototype.dispatchEvent = function(evt) {};
@@ -200,7 +207,7 @@ Node.prototype.appendChild = function(newChild) {};
 
 /**
  * @param {boolean} deep
- * @return {Node}
+ * @return {!Node}
  * @see http://www.w3.org/TR/1998/REC-DOM-Level-1-19981001/level-one-core.html#method-cloneNode
  * @nosideeffects
  */
@@ -216,14 +223,14 @@ Node.prototype.hasChildNodes = function() {};
 /**
  * @param {Node} newChild
  * @param {?Node} refChild
- * @return {Node}
+ * @return {!Node}
  * @see http://www.w3.org/TR/1998/REC-DOM-Level-1-19981001/level-one-core.html#method-insertBefore
  */
 Node.prototype.insertBefore = function(newChild, refChild) {};
 
 /**
  * @param {Node} oldChild
- * @return {Node}
+ * @return {!Node}
  * @see http://www.w3.org/TR/1998/REC-DOM-Level-1-19981001/level-one-core.html#method-removeChild
  */
 Node.prototype.removeChild = function(oldChild) {};
@@ -231,7 +238,7 @@ Node.prototype.removeChild = function(oldChild) {};
 /**
  * @param {Node} newChild
  * @param {Node} oldChild
- * @return {Node}
+ * @return {!Node}
  * @see http://www.w3.org/TR/1998/REC-DOM-Level-1-19981001/level-one-core.html#method-replaceChild
  */
 Node.prototype.replaceChild = function(newChild, oldChild) {};
@@ -405,14 +412,19 @@ Document.prototype.createCDATASection = function(data) {};
 Document.prototype.createDocumentFragment = function() {};
 
 /**
- * Create a DOM element. Surprisingly, this has side-effects on IE
- * (creating and element with a custom tag boots up a sub-system that
- * handles custom tags).
+ * Create a DOM element. Surprisingly, this has side-effects on IE (creating an
+ * element with a custom tag boots up a sub-system that handles custom tags).
+ *
+ * Web components introduced the second parameter as a way of extending existing
+ * tags (e.g. document.createElement('button', 'fancy-button')).
+ *
  * @param {string} tagName
+ * @param {string=} opt_typeExtension
  * @return {!Element}
  * @see http://www.w3.org/TR/1998/REC-DOM-Level-1-19981001/level-one-core.html#method-createElement
+ * @see http://w3c.github.io/webcomponents/spec/custom/#extensions-to-document-interface-to-instantiate
  */
-Document.prototype.createElement = function(tagName) {};
+Document.prototype.createElement = function(tagName, opt_typeExtension) {};
 
 /**
  * @param {string} name
@@ -713,6 +725,7 @@ Element.prototype.setAttributeNode = function(newAttr) {};
 // http://www.w3.org/TR/DOM-Level-3-Events/#event-types
 
 /** @type {?function (Event)} */ Element.prototype.onabort;
+/** @type {?function (Event)} */ Element.prototype.onbeforeinput;
 /** @type {?function (Event)} */ Element.prototype.onbeforeunload;
 /** @type {?function (Event)} */ Element.prototype.onblur;
 /** @type {?function (Event)} */ Element.prototype.onchange;
@@ -728,6 +741,7 @@ Element.prototype.setAttributeNode = function(newAttr) {};
 /** @type {?function (Event)} */ Element.prototype.onfocus;
 /** @type {?function (Event)} */ Element.prototype.onfocusin;
 /** @type {?function (Event)} */ Element.prototype.onfocusout;
+/** @type {?function (Event)} */ Element.prototype.oninput;
 /** @type {?function (Event)} */ Element.prototype.onkeydown;
 /** @type {?function (Event)} */ Element.prototype.onkeypress;
 /** @type {?function (Event)} */ Element.prototype.onkeyup;
@@ -951,12 +965,18 @@ ProcessingInstruction.prototype.nodeValue;
  */
 ProcessingInstruction.prototype.target;
 
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
+Window.prototype.addEventListener = function(type, listener, opt_useCapture) {};
 
-/** @override */
-Window.prototype.addEventListener = function(type, listener, useCapture) {};
-
-/** @override */
-Window.prototype.removeEventListener = function(type, listener, useCapture) {};
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
+Window.prototype.removeEventListener = function(type, listener, opt_useCapture)
+    {};
 
 /** @override */
 Window.prototype.dispatchEvent = function(evt) {};

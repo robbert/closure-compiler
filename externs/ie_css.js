@@ -150,6 +150,12 @@ CSSStyleDeclaration.prototype.setExpression =
 /** @type {string} */ CSS2Properties.prototype.backgroundPositionY;
 
 /**
+ * @see http://msdn.microsoft.com/en-us/library/ie/ms531081(v=vs.85).aspx
+ * NOTE: Left untyped to avoid conflict with caller.
+ */
+CSSProperties.prototype.behavior;
+
+/**
  * @type {string}
  * @see http://msdn.microsoft.com/en-us/library/ms533883.aspx
  */

@@ -120,7 +120,7 @@ class NameReferenceGraph extends
   public List<Name> getReferencesAt(Node site) {
     Preconditions.checkArgument(
         site.isGetProp() || site.isName());
-    List<Name> result = new ArrayList<Name>();
+    List<Name> result = new ArrayList<>();
     for (Name target : referenceMap.get(site)) {
       result.add(target);
     }
@@ -358,9 +358,6 @@ class NameReferenceGraph extends
     // The node that references the name.
     public final Node site;
 
-    // Parent pointer.
-    public final Node parent;
-
     private JSModule module = null;
 
     // A reference is unknown because we don't know the object's type.
@@ -368,9 +365,8 @@ class NameReferenceGraph extends
     // A.x() reference to someObject.y and B.y MAY be the site.
     private boolean isUnknown = false;
 
-    public Reference(Node site, Node parent) {
+    public Reference(Node site) {
       this.site = site;
-      this.parent = parent;
     }
 
     public boolean isUnknown() {
