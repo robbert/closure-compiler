@@ -93,49 +93,99 @@ StyleSheet.prototype.setExpression;
  */
 StyleSheet.prototype.removeExpression;
 
+/**
+ * @param {string} name
+ * @param {number=} opt_flags
+ * @return {string|number|boolean|null}
+ * @see http://msdn.microsoft.com/en-us/library/ms536429(VS.85).aspx
+ */
+CSSStyleDeclaration.prototype.getAttribute = function(name, opt_flags) {};
+
+/**
+ * @param {string} name
+ * @return {string|number|boolean|null}
+ * @see http://msdn.microsoft.com/en-us/library/aa358797(VS.85).aspx
+ */
+CSSStyleDeclaration.prototype.getExpression = function(name) {};
+
+/**
+ * @param {string} name
+ * @param {number=} opt_flags
+ * @return {boolean}
+ * @see http://msdn.microsoft.com/en-us/library/ms536696(VS.85).aspx
+ */
+CSSStyleDeclaration.prototype.removeAttribute =
+    function(name, opt_flags) {};
+
+/**
+ * @param {string} name
+ * @return {boolean}
+ * @see http://msdn.microsoft.com/en-us/library/aa358798(VS.85).aspx
+ */
+CSSStyleDeclaration.prototype.removeExpression = function(name) {};
+
+/**
+ * @param {string} name
+ * @param {*} value
+ * @param {number=} opt_flags
+ * @see http://msdn.microsoft.com/en-us/library/ms536739(VS.85).aspx
+ */
+CSSStyleDeclaration.prototype.setAttribute = function(name, value, opt_flags) {};
+
+/**
+ * @param {string} name
+ * @param {string} expr
+ * @param {string=} opt_language
+ * @return {undefined}
+ * @see http://msdn.microsoft.com/en-us/library/ms531196(VS.85).aspx
+ */
+CSSStyleDeclaration.prototype.setExpression =
+    function(name, expr, opt_language) {};
+
+
 // IE-only CSS style names.
 
-/** @type {string} */ CSSProperties.prototype.backgroundPositionX;
+/** @type {string} */ CSS2Properties.prototype.backgroundPositionX;
 
-/** @type {string} */ CSSProperties.prototype.backgroundPositionY;
+/** @type {string} */ CSS2Properties.prototype.backgroundPositionY;
 
 /**
  * @type {string}
  * @see http://msdn.microsoft.com/en-us/library/ms533883.aspx
  */
-CSSProperties.prototype.imeMode;
+CSS2Properties.prototype.imeMode;
 
 /**
  * @type {string}
  * @see http://msdn.microsoft.com/en-us/library/ms534176(VS.85).aspx
  */
-CSSProperties.prototype.msInterpolationMode;
+CSS2Properties.prototype.msInterpolationMode;
 
-/** @type {string} */ CSSProperties.prototype.overflowX;
+/** @type {string} */ CSS2Properties.prototype.overflowX;
 
-/** @type {string} */ CSSProperties.prototype.overflowY;
+/** @type {string} */ CSS2Properties.prototype.overflowY;
 
-/** @type {number} */ CSSProperties.prototype.pixelWidth;
+/** @type {number} */ CSS2Properties.prototype.pixelWidth;
 
-/** @type {number} */ CSSProperties.prototype.pixelHeight;
+/** @type {number} */ CSS2Properties.prototype.pixelHeight;
 
-/** @type {number} */ CSSProperties.prototype.pixelLeft;
+/** @type {number} */ CSS2Properties.prototype.pixelLeft;
 
-/** @type {number} */ CSSProperties.prototype.pixelTop;
+/** @type {number} */ CSS2Properties.prototype.pixelTop;
 
-/** @type {string} */ CSSProperties.prototype.styleFloat;
+/** @type {string} */ CSS2Properties.prototype.styleFloat;
 
 /**
  * @type {string|number}
  * @see http://msdn.microsoft.com/en-us/library/ms535169(VS.85).aspx
  */
-CSSProperties.prototype.zoom;
+CSS2Properties.prototype.zoom;
 
 /**
  * @type {string}
  * @see http://msdn.microsoft.com/en-us/library/ms535153(VS.85).aspx
  */
-CSSProperties.prototype.writingMode;
+CSS2Properties.prototype.writingMode;
 
 /**
  * IE-specific extensions.
@@ -143,119 +193,119 @@ CSSProperties.prototype.writingMode;
  */
 
 /** @type {string} */
-CSSProperties.prototype.MsAccelerator;
+CSS2Properties.prototype.MsAccelerator;
 
 /** @type {string} */
-CSSProperties.prototype.MsBackgroundPositionX;
+CSS2Properties.prototype.MsBackgroundPositionX;
 
 /** @type {string} */
-CSSProperties.prototype.MsBackgroundPositionY;
+CSS2Properties.prototype.MsBackgroundPositionY;
 
 /** @type {string} */
-CSSProperties.prototype.MsBehavior;
+CSS2Properties.prototype.MsBehavior;
 
 /** @type {string} */
-CSSProperties.prototype.MsBlockProgression;
+CSS2Properties.prototype.MsBlockProgression;
 
 /** @type {string} */
-CSSProperties.prototype.MsFilter;
+CSS2Properties.prototype.MsFilter;
 
 /** @type {string} */
-CSSProperties.prototype.MsImeMode;
+CSS2Properties.prototype.MsImeMode;
 
 /** @type {string} */
-CSSProperties.prototype.MsLayoutGrid;
+CSS2Properties.prototype.MsLayoutGrid;
 
 /** @type {string} */
-CSSProperties.prototype.MsLayoutGridChar;
+CSS2Properties.prototype.MsLayoutGridChar;
 
 /** @type {string} */
-CSSProperties.prototype.MsLayoutGridLine;
+CSS2Properties.prototype.MsLayoutGridLine;
 
 /** @type {string} */
-CSSProperties.prototype.MsLayoutGridMode;
+CSS2Properties.prototype.MsLayoutGridMode;
 
 /** @type {string} */
-CSSProperties.prototype.MsLayoutGridType;
+CSS2Properties.prototype.MsLayoutGridType;
 
 /** @type {string} */
-CSSProperties.prototype.MsLineBreak;
+CSS2Properties.prototype.MsLineBreak;
 
 /** @type {string} */
-CSSProperties.prototype.MsLineGridMode;
+CSS2Properties.prototype.MsLineGridMode;
 
 /** @type {string} */
-CSSProperties.prototype.MsInterpolationMode;
+CSS2Properties.prototype.MsInterpolationMode;
 
 /** @type {string} */
-CSSProperties.prototype.MsOverflowX;
+CSS2Properties.prototype.MsOverflowX;
 
 /** @type {string} */
-CSSProperties.prototype.MsOverflowY;
+CSS2Properties.prototype.MsOverflowY;
 
 /** @type {string} */
-CSSProperties.prototype.MsScrollbar3dlightColor;
+CSS2Properties.prototype.MsScrollbar3dlightColor;
 
 /** @type {string} */
-CSSProperties.prototype.MsScrollbarArrowColor;
+CSS2Properties.prototype.MsScrollbarArrowColor;
 
 /** @type {string} */
-CSSProperties.prototype.MsScrollbarBaseColor;
+CSS2Properties.prototype.MsScrollbarBaseColor;
 
 /** @type {string} */
-CSSProperties.prototype.MsScrollbarDarkshadowColor;
+CSS2Properties.prototype.MsScrollbarDarkshadowColor;
 
 /** @type {string} */
-CSSProperties.prototype.MsScrollbarFaceColor;
+CSS2Properties.prototype.MsScrollbarFaceColor;
 
-CSSProperties.prototype.MsScrollbarHighlightColor;
-
-/** @type {string} */
-CSSProperties.prototype.MsScrollbarShadowColor;
+CSS2Properties.prototype.MsScrollbarHighlightColor;
 
 /** @type {string} */
-CSSProperties.prototype.MsScrollbarTrackColor;
+CSS2Properties.prototype.MsScrollbarShadowColor;
 
 /** @type {string} */
-CSSProperties.prototype.MsTextAlignLast;
+CSS2Properties.prototype.MsScrollbarTrackColor;
 
 /** @type {string} */
-CSSProperties.prototype.MsTextAutospace;
+CSS2Properties.prototype.MsTextAlignLast;
 
 /** @type {string} */
-CSSProperties.prototype.MsTextJustify;
+CSS2Properties.prototype.MsTextAutospace;
 
 /** @type {string} */
-CSSProperties.prototype.MsTextKashidaSpace;
+CSS2Properties.prototype.MsTextJustify;
 
 /** @type {string} */
-CSSProperties.prototype.MsTextOverflow;
+CSS2Properties.prototype.MsTextKashidaSpace;
 
 /** @type {string} */
-CSSProperties.prototype.MsTextUnderlinePosition;
+CSS2Properties.prototype.MsTextOverflow;
 
 /** @type {string} */
-CSSProperties.prototype.MsWordBreak;
+CSS2Properties.prototype.MsTextUnderlinePosition;
 
 /** @type {string} */
-CSSProperties.prototype.MsWordWrap;
+CSS2Properties.prototype.MsWordBreak;
 
 /** @type {string} */
-CSSProperties.prototype.MsWritingMode;
+CSS2Properties.prototype.MsWordWrap;
 
 /** @type {string} */
-CSSProperties.prototype.MsZoom;
+CSS2Properties.prototype.MsWritingMode;
+
+/** @type {string} */
+CSS2Properties.prototype.MsZoom;
 
 // See: http://msdn.microsoft.com/en-us/library/windows/apps/Hh702466.aspx
 
 /** @type {string} */
-CSSProperties.prototype.msContentZooming;
+CSS2Properties.prototype.msContentZooming;
 
 /** @type {string} */
-CSSProperties.prototype.msTouchAction;
+CSS2Properties.prototype.msTouchAction;
 
 /** @type {string} */
-CSSProperties.prototype.msTransform;
+CSS2Properties.prototype.msTransform;
 
 /** @type {string} */
-CSSProperties.prototype.msTransition;
+CSS2Properties.prototype.msTransition;

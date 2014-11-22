@@ -29,6 +29,13 @@
  * @externs
  */
 
+/**
+ * @constructor
+ * @extends {HTMLElement}
+ * @see http://www.whatwg.org/specs/web-apps/current-work/#htmlunknownelement
+ */
+function HTMLUnknownElement() {}
+
 /*
  * JSON API.
  */
@@ -1909,73 +1916,6 @@ FileList.prototype.length;
 FileList.prototype.item = function(i) { return null; };
 
 /**
- * @type {boolean}
- * @see http://dev.w3.org/2006/webapi/XMLHttpRequest-2/#withcredentials
- */
-XMLHttpRequest.prototype.withCredentials;
-
-/**
- * @type {XMLHttpRequestUpload}
- * @see http://dev.w3.org/2006/webapi/XMLHttpRequest-2/#the-upload-attribute
- */
-XMLHttpRequest.prototype.upload;
-
-/**
- * @param {string} mimeType The mime type to override with.
- */
-XMLHttpRequest.prototype.overrideMimeType = function(mimeType) {};
-
-/**
- * @type {string}
- * @see http://dev.w3.org/2006/webapi/XMLHttpRequest-2/#the-responsetype-attribute
- */
-XMLHttpRequest.prototype.responseType;
-
-/**
- * @type {*}
- * @see http://dev.w3.org/2006/webapi/XMLHttpRequest-2/#the-responsetype-attribute
- */
-XMLHttpRequest.prototype.response;
-
-
-/**
- * @type {ArrayBuffer}
- * Implemented as a draft spec in Firefox 4 as the way to get a requested array
- * buffer from an XMLHttpRequest.
- * @see https://developer.mozilla.org/En/Using_XMLHttpRequest#Receiving_binary_data_using_JavaScript_typed_arrays
- */
-XMLHttpRequest.prototype.mozResponseArrayBuffer;
-
-/**
- * XMLHttpRequestEventTarget defines events for checking the status of a data
- * transfer between a client and a server. This should be a common base class
- * for XMLHttpRequest and XMLHttpRequestUpload.
- *
- * @constructor
- * @implements {EventTarget}
- */
-function XMLHttpRequestEventTarget() {}
-
-/** @override */
-XMLHttpRequestEventTarget.prototype.addEventListener = function(
-    type, listener, useCapture) {};
-
-/** @override */
-XMLHttpRequestEventTarget.prototype.removeEventListener = function(
-    type, listener, useCapture) {};
-
-/** @override */
-XMLHttpRequestEventTarget.prototype.dispatchEvent = function(evt) {};
-
-/**
- * An event target to track the status of an upload.
- *
- * @constructor
- * @extends {XMLHttpRequestEventTarget}
- */
-function XMLHttpRequestUpload() {}
-
-/**
  * @param {number=} opt_width
  * @param {number=} opt_height
  * @constructor
@@ -2794,6 +2734,16 @@ HTMLEmbedElement.prototype.src;
  */
 HTMLEmbedElement.prototype.type;
 
+/**
+ * @constructor
+ * @extends {HTMLElement}
+ * @see https://dvcs.w3.org/hg/webcomponents/raw-file/default/spec/templates/index.html#api-html-template-element
+ */
+function HTMLTemplateElement() {}
+
+/** @type {DocumentFragment} */
+HTMLTemplateElement.prototype.content;
+
 // Fullscreen APIs.
 
 /**
@@ -2968,6 +2918,14 @@ Window.prototype.MozMutationObserver;
 
 
 /**
+ * @constructor
+ * @extends {HTMLAudioElement}
+ * @param {string=} opt_src
+ * @see http://www.whatwg.org/specs/web-apps/current-work/multipage/the-video-element.html#dom-audio
+ */
+function Audio(opt_src) {}
+
+/**
  * @see http://www.w3.org/TR/page-visibility/
  * @type {string}
  */
@@ -3009,6 +2967,13 @@ Document.prototype.webkitHidden;
  */
 Document.prototype.msHidden;
 
+/**
+ * @param {string=} title
+ * @return {HTMLDocument}
+ * @see http://dom.spec.whatwg.org/#dom-domimplementation-createhtmldocument
+ * @nosideeffects
+ */
+DOMImplementation.prototype.createHTMLDocument = function(title) {};
 
 /**
  * @see https://github.com/promises-aplus/promises-spec

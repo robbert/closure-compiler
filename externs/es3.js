@@ -61,14 +61,14 @@ var arguments;
  * @see http://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Properties/Infinity
  * @const
  */
-var Infinity;
+var Infinity = 1 / 0;
 
 /**
  * @type {number}
  * @see http://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Properties/NaN
  * @const
  */
-var NaN;
+var NaN = 0 / 0;
 
 /**
  * @type {undefined}
@@ -174,9 +174,11 @@ function parseInt(num, base) {}
 function eval(code) {}
 
 /**
+ * Both a constructor and a function, e.g.: Object(42) instanceof Object
  * @constructor
  * @param {*=} opt_value
  * @nosideeffects
+ * @return {Object}
  * @see http://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Objects/Object
  */
 function Object(opt_value) {}
@@ -866,34 +868,39 @@ Number.prototype.toString = function(opt_radix) {};
 
 // Properties.
 /**
+ * @const
  * @type {number}
  * @see http://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Objects/Number/MAX_VALUE
  */
-Number.MAX_VALUE;
+Number.MAX_VALUE = 1.7976931348623157e+308;
 
 /**
+ * @const
  * @type {number}
  * @see http://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Objects/Number/MIN_VALUE
  */
-Number.MIN_VALUE;
+Number.MIN_VALUE = -1.7976931348623157e+308;
 
 /**
+ * @const
  * @type {number}
  * @see http://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Objects/Number/NaN
  */
-Number.NaN;
+Number.NaN = 0 / 0;
 
 /**
+ * @const
  * @type {number}
  * @see http://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Objects/Number/NEGATIVE_INFINITY
  */
-Number.NEGATIVE_INFINITY;
+Number.NEGATIVE_INFINITY = 1 / -0;
 
 /**
+ * @const
  * @type {number}
  * @see http://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Objects/Number/POSITIVE_INFINITY
  */
-Number.POSITIVE_INFINITY;
+Number.POSITIVE_INFINITY = 1 / 0;
 
 
 /**
@@ -1057,62 +1064,69 @@ Math.toSource = function() {};
 // Properties:
 
 /**
+ * @const
  * @type {number}
  * @see http://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Objects/Math/E
  */
-Math.E;
+Math.E = 2.718281828459045;
 
 /**
+ * @const
  * @type {number}
  * @see http://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Objects/Math/LN2
  */
-Math.LN2;
+Math.LN2 = 0.6931471805599453;
 
 /**
+ * @const
  * @type {number}
  * @see http://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Objects/Math/LN10
  */
-Math.LN10;
+Math.LN10 = 2.302585092994046;
 
 /**
+ * @const
  * @type {number}
  * @see http://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Objects/Math/LOG2E
  */
-Math.LOG2E;
+Math.LOG2E = 1.4426950408889634;
 
 /**
+ * @const
  * @type {number}
  * @see http://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Objects/Math/LOG10E
  */
-Math.LOG10E;
+Math.LOG10E = 0.4342944819032518;
 
 /**
+ * @const
  * @type {number}
  * @see http://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Objects/Math/PI
  */
-Math.PI;
+Math.PI = 3.141592653589793;
 
 /**
+ * @const
  * @type {number}
  * @see http://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Objects/Math/SQRT1_2
  */
-Math.SQRT1_2;
+Math.SQRT1_2 = 0.7071067811865476;
 
 /**
+ * @const
  * @type {number}
  * @see http://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Objects/Math/SQRT2
  */
-Math.SQRT2;
-
+Math.SQRT2 = 1.4142135623730951;
 
 /**
- * @param {?=} opt_yr_num
- * @param {?=} opt_mo_num
- * @param {?=} opt_day_num
- * @param {?=} opt_hr_num
- * @param {?=} opt_min_num
- * @param {?=} opt_sec_num
- * @param {?=} opt_ms_num
+ * @param {number=} opt_yr_num
+ * @param {number=} opt_mo_num
+ * @param {number=} opt_day_num
+ * @param {number=} opt_hr_num
+ * @param {number=} opt_min_num
+ * @param {number=} opt_sec_num
+ * @param {number=} opt_ms_num
  * @constructor
  * @return {string}
  * @nosideeffects
@@ -1718,7 +1732,7 @@ String.prototype.localeCompare = function(other) {};
  *
  * @this {String|string}
  * @param {*} regexp
- * @return {Array.<string>} This should really return an Array with a few
+ * @return {?Array.<string>} This should really return an Array with a few
  *     special properties, but we do not have a good way to model this in
  *     our type system. Also see Regexp.prototype.exec.
  * @see http://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Objects/String/match
@@ -1914,7 +1928,7 @@ RegExp.prototype.compile = function(pattern, opt_flags) {};
 
 /**
  * @param {*} str The string to search.
- * @return {Array.<string>} This should really return an Array with a few
+ * @return {?Array.<string>} This should really return an Array with a few
  *     special properties, but we do not have a good way to model this in
  *     our type system. Also see String.prototype.match.
  * @see http://msdn.microsoft.com/en-us/library/z908hy33(VS.85).aspx

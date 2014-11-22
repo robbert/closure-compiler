@@ -25,6 +25,20 @@
 // should be used with an explicit Window object.
 
 /**
+ * @constructor
+ * @implements {EventTarget}
+ * @see https://developer.mozilla.org/en-US/docs/DOM/window
+ */
+function Window() {}
+
+/**
+ * @type {!Window}
+ * @see https://developer.mozilla.org/en/DOM/window.top
+ * @const
+ */
+var window;
+
+/**
  * @type {!Window}
  * @see https://developer.mozilla.org/en/DOM/window.top
  * @const

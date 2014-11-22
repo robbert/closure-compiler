@@ -28,6 +28,7 @@ Window.prototype.opera;
 Window.prototype.opera.postError;
 
 /** @constructor */ function XSLTProcessor() {}
+
 /**
  * @param {*=} opt_text
  * @param {*=} opt_value

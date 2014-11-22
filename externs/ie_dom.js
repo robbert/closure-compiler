@@ -136,6 +136,7 @@ XMLDOMDocument.prototype.loadXML = function(xmlString) {};
 /**
  * @param {string} id
  * @return {Node}
+ * @nosideeffects
  * @see http://msdn.microsoft.com/en-us/library/ms766397(VS.85).aspx
  */
 XMLDOMDocument.prototype.nodeFromID = function(id) {};
@@ -291,6 +292,7 @@ ClipboardData.prototype.setData = function(type, data) {};
  * @see http://msdn.microsoft.com/en-us/library/ms535220(VS.85).aspx
  * @param {string} type Type of clipboard data to get ('Text' or 'URL').
  * @return {string} The current data
+ * @nosideeffects
  */
 ClipboardData.prototype.getData = function(type) { };
 
@@ -298,15 +300,10 @@ ClipboardData.prototype.getData = function(type) { };
 Window.prototype.ActiveXObject;
 
 /**
- * @type {!Window}
- * @see https://developer.mozilla.org/en/DOM/window
- */
-var window;
-
-/**
  * @param {number|undefined|null} immediateID
  * @see https://developer.mozilla.org/en-US/docs/DOM/window.clearImmediate
  * @see http://msdn.microsoft.com/en-us/library/ie/hh924825(v=vs.85).aspx
+ * @see https://dvcs.w3.org/hg/webperf/raw-file/tip/specs/setImmediate/Overview.html#si-clearImmediate
  */
 Window.prototype.clearImmediate = function(immediateID) {};
 
@@ -335,6 +332,14 @@ Window.prototype.dialogTop;
  * @see http://msdn.microsoft.com/en-us/library/ms533727(VS.85).aspx
  */
 Window.prototype.dialogWidth;
+
+/**
+ * Support for doScroll is removed in Internet Explorer 11:
+ * @see http://msdn.microsoft.com/en-us/library/ie/bg182625(v=vs.85).aspx
+ * 
+ * @param {string} component
+ */
+Window.prototype.doScroll = function (component) {};
 
 /**
  * @see http://msdn.microsoft.com/en-us/library/ms535863(VS.85).aspx
@@ -381,11 +386,12 @@ Window.prototype.XMLHttpRequest;
 // Functions
 
 /**
+ * @see http://msdn.microsoft.com/en-us/library/mm536343(v=vs.85).aspx
  * @param {string} event
- * @param {Function} handler
- * @see http://msdn.microsoft.com/en-us/library/ms536343(VS.85).aspx
+ * @param {function(Event)} handler
+ * @return {boolean}
  */
-Window.prototype.attachEvent;
+Window.prototype.attachEvent = function (event, handler) {};
 
 /**
  * @see http://msdn.microsoft.com/en-us/library/ms536392(VS.85).aspx
@@ -394,8 +400,10 @@ Window.prototype.createPopup;
 
 /**
  * @see http://msdn.microsoft.com/en-us/library/ms536411(VS.85).aspx
+ * @param {string} evtType
+ * @param {Function} fn
  */
-Window.prototype.detachEvent;
+Window.prototype.detachEvent = function (evtType, fn) {};
 
 /**
  * @see http://msdn.microsoft.com/en-us/library/ms536420(VS.85).aspx
@@ -474,6 +482,7 @@ Window.prototype.setActive;
  * @return {number}
  * @see https://developer.mozilla.org/en-US/docs/DOM/window.setImmediate
  * @see http://msdn.microsoft.com/en-us/library/ie/hh773176(v=vs.85).aspx
+ * @see https://dvcs.w3.org/hg/webperf/raw-file/tip/specs/setImmediate/Overview.html#si-setImmediate
  */
 Window.prototype.setImmediate = function(callback) {};
 
@@ -762,12 +771,14 @@ Selection.prototype.clear = function() {};
 /**
  * @return {TextRange|ControlRange}
  * @see http://msdn.microsoft.com/en-us/library/ms536394(VS.85).aspx
+ * @nosideeffects
  */
 Selection.prototype.createRange = function() {};
 
 /**
  * @return {Array.<TextRange>}
  * @see http://msdn.microsoft.com/en-us/library/ms536396(VS.85).aspx
+ * @nosideeffects
  */
 Selection.prototype.createRangeCollection = function() {};
 
@@ -835,6 +846,7 @@ Document.prototype.fileSize;
 
 /**
  * @see http://msdn.microsoft.com/en-us/library/ms534331(VS.85).aspx
+ * @type {Window}
  */
 Document.prototype.parentWindow;
 
@@ -883,11 +895,12 @@ Document.prototype.XSLDocument;
 // functions
 
 /**
+ * @see http://msdn.microsoft.com/en-us/library/mm536343(v=vs.85).aspx
  * @param {string} event
- * @param {Function} handler
- * @see http://msdn.microsoft.com/en-us/library/ms536343(VS.85).aspx
+ * @param {function(Event)} handler
+ * @return {boolean}
  */
-Document.prototype.attachEvent;
+Document.prototype.attachEvent = function (event, handler) {};
 
 /**
  * @see http://msdn.microsoft.com/en-us/library/ms536390(VS.85).aspx
@@ -901,6 +914,8 @@ Document.prototype.createStyleSheet;
 
 /**
  * @see http://msdn.microsoft.com/en-us/library/ms536411(VS.85).aspx
+ * @param {string} evtType
+ * @param {Function} fn
  */
 Document.prototype.detachEvent;
 
@@ -912,6 +927,7 @@ Document.prototype.focus;
 /**
  * @see http://msdn.microsoft.com/en-us/library/ms536447(VS.85).aspx
  * @return {boolean}
+ * @nosideeffects
  */
 Document.prototype.hasFocus = function() {};
 
@@ -960,6 +976,7 @@ Document.prototype.images;
 
 /**
  * @see http://msdn.microsoft.com/en-us/library/ms537470(VS.85).aspx
+ * @type {DocumentNamespaces}
  */
 Document.prototype.namespaces;
 
@@ -976,11 +993,12 @@ Document.prototype.scripts;
 Element.prototype.addBehavior = function(sUrl) {};
 
 /**
- * @param {string} event
- * @param {Function} handler
  * @see http://msdn.microsoft.com/en-us/library/mm536343(v=vs.85).aspx
+ * @param {string} event
+ * @param {function(Event)} handler
+ * @return {boolean}
  */
-Element.prototype.attachEvent;
+Element.prototype.attachEvent = function (event, handler) {};
 
 /**
  * @type {boolean}
@@ -1023,13 +1041,22 @@ Element.prototype.contentEditable;
 /**
  * @return {TextRange}
  * @see http://msdn.microsoft.com/en-us/library/ms536401(VS.85).aspx
+ * @nosideeffects
  */
-Element.prototype.createTextRange;
+Element.prototype.createTextRange = function () {};
 
 /**
  * @see http://msdn.microsoft.com/en-us/library/ms535231(VS.85).aspx
+ * @type {Object.<string, string>}
  */
 Element.prototype.currentStyle;
+
+/**
+ * @param {string} event
+ * @param {Function} handler
+ * @see http://msdn.microsoft.com/en-us/library/mm536343(v=vs.85).aspx
+ */
+Element.prototype.detachEvent = function (event, handler) { };;
 
 /**
  * @param {string=} opt_action
@@ -1039,8 +1066,11 @@ Element.prototype.doScroll = function(opt_action) {};
 
 /**
  * @see http://msdn.microsoft.com/en-us/library/ms536423(VS.85).aspx
+ * @param {string} type
+ * @param {*=} evt
+ * @return {boolean}
  */
-Element.prototype.fireEvent;
+Element.prototype.fireEvent = function (type, evt) { };
 
 /**
  * @type {boolean}
@@ -1049,11 +1079,13 @@ Element.prototype.fireEvent;
 Element.prototype.hideFocus;
 
 /**
+ * @type {string}
  * @see http://msdn.microsoft.com/en-us/library/ms533899.aspx
  */
 Element.prototype.innerText;
 
 /**
+ * @type {boolean}
  * @see http://msdn.microsoft.com/en-us/library/ms537838(VS.85).aspx
  */
 Element.prototype.isContentEditable;
@@ -1119,6 +1151,7 @@ Element.prototype.releaseCapture = function() {};
 Element.prototype.removeBehavior = function(iID) {};
 
 /**
+ * @type {RuntimeStyle}
  * @see http://msdn.microsoft.com/en-us/library/aa703996(VS.85).aspx
  */
 Element.prototype.runtimeStyle;
@@ -1131,6 +1164,7 @@ Element.prototype.runtimeStyle;
 Element.prototype.setCapture = function(opt_bContainerCapture) {};
 
 /**
+ * @type {number}
  * @see http://msdn.microsoft.com/en-us/library/ms534635(VS.85).aspx
  */
 Element.prototype.sourceIndex;
@@ -1331,7 +1365,7 @@ XDomainRequest.prototype.send = function(varBody) {};
  * Called if the request could not be completed. Note that error information is
  * not available.
  * @see http://msdn.microsoft.com/en-us/library/ms536930%28v=VS.85%29.aspx
- * @type {?function()}
+ * @type {?function(Event)}
  */
 XDomainRequest.prototype.onerror;
 
@@ -1345,14 +1379,14 @@ XDomainRequest.prototype.onload;
 /**
  * Called every time part of the response has been received.
  * @see http://msdn.microsoft.com/en-us/library/cc197058%28v=VS.85%29.aspx
- * @type {?function()}
+ * @type {?function(Event)}
  */
 XDomainRequest.prototype.onprogress;
 
 /**
  * Called if the timeout period has elapsed.
  * @see http://msdn.microsoft.com/en-us/library/cc197061%28v=VS.85%29.aspx
- * @type {?function()}
+ * @type {?function(Event)}
  */
 XDomainRequest.prototype.ontimeout;
 
@@ -1392,3 +1426,1298 @@ Navigator.prototype.msPointerEnabled;
  * @see http://msdn.microsoft.com/en-us/library/ms533721(v=vs.85).aspx
  */
 Screen.prototype.deviceXDPI;
+
+/**
+ * @see http://msdn.microsoft.com/en-us/library/ms535889(v=vs.85).aspx
+ * @constructor
+ */
+function RuntimeStyle()
+{
+
+}
+
+/**
+ * @see http://msdn.microsoft.com/en-us/library/ms536429(v=vs.85).aspx
+ * @nosideeffects
+ */
+RuntimeStyle.prototype.getAttribute = Element.prototype.getAttribute;
+
+/**
+ * @param {string} propertyName
+ * @return {string}
+ * @nosideeffects
+ * @see http://msdn.microsoft.com/en-us/library/aa358797(v=vs.85).aspx
+ */
+RuntimeStyle.prototype.getExpression = function (propertyName)
+{
+
+};
+
+/**
+ * @see http://msdn.microsoft.com/en-us/library/ms536696(v=vs.85).aspx
+ */
+RuntimeStyle.prototype.removeAttribute = Element.prototype.getAttribute;
+
+/**
+ * @private
+ * @enum {string}
+ */
+RuntimeStyle.ExpressionLanguage = {
+	JSCRIPT: "JScript",
+	VBSCRIPT: "VBScript",
+	JAVASCRIPT: "JavaScript"
+};
+
+/**
+ * @param {string} propertyName
+ * @return {boolean}
+ * @see http://msdn.microsoft.com/en-us/library/aa358798(v=vs.85).aspx
+ */
+RuntimeStyle.prototype.removeExpression = function (propertyName)
+{
+	
+};
+
+/**
+ * @param {string} propertyName
+ * @param {string} expression
+ * @param {RuntimeStyle.ExpressionLanguage=} language Optional, defaults to "JScript"
+ * @see http://msdn.microsoft.com/en-us/library/ms531196(v=vs.85).aspx
+ */
+RuntimeStyle.prototype.setExpression = function (propertyName, expression, language)
+{
+	
+};
+
+/**
+ * @see http://msdn.microsoft.com/en-us/library/ms536429(v=vs.85).aspx
+ */
+RuntimeStyle.prototype.setAttribute = Element.prototype.setAttribute;
+
+
+/** @type {string} */
+RuntimeStyle.prototype.accelerator;
+
+/** @type {string} */
+RuntimeStyle.prototype.background;
+
+/** @type {string} */
+RuntimeStyle.prototype.backgroundAttachment;
+
+/** @type {string} */
+RuntimeStyle.prototype.backgroundClip;
+
+/** @type {string} */
+RuntimeStyle.prototype.backgroundColor;
+
+/** @type {string} */
+RuntimeStyle.prototype.backgroundImage;
+
+/** @type {string} */
+RuntimeStyle.prototype.backgroundOrigin;
+
+/** @type {string} */
+RuntimeStyle.prototype.backgroundPosition;
+
+/** @type {string} */
+RuntimeStyle.prototype.backgroundPositionX;
+
+/** @type {string} */
+RuntimeStyle.prototype.backgroundPositionY;
+
+/** @type {string} */
+RuntimeStyle.prototype.backgroundRepeat;
+
+/** @type {string} */
+RuntimeStyle.prototype.backgroundSize;
+
+/** @type {string} */
+RuntimeStyle.prototype.behavior;
+
+/** @type {string} */
+RuntimeStyle.prototype.border;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderBottom;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderBottomColor;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderBottomLeftRadius;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderBottomRightRadius;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderBottomStyle;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderBottomWidth;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderCollapse;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderColor;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderLeft;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderLeftColor;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderLeftStyle;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderLeftWidth;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderRadius;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderRight;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderRightColor;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderRightStyle;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderRightWidth;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderSpacing;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderStyle;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderTop;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderTopColor;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderTopLeftRadius;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderTopRightRadius;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderTopStyle;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderTopWidth;
+
+/** @type {string} */
+RuntimeStyle.prototype.borderWidth;
+
+/** @type {string} */
+RuntimeStyle.prototype.bottom;
+
+/** @type {string} */
+RuntimeStyle.prototype.boxShadow;
+
+/** @type {string} */
+RuntimeStyle.prototype.boxSizing;
+
+/** @type {string} */
+RuntimeStyle.prototype.captionSide;
+
+/** @type {string} */
+RuntimeStyle.prototype.clear;
+
+/** @type {string} */
+RuntimeStyle.prototype.clip;
+
+/** @type {string} */
+RuntimeStyle.prototype.color;
+
+/** @type {string} */
+RuntimeStyle.prototype.content;
+
+/** @type {string} */
+RuntimeStyle.prototype.counterIncrement;
+
+/** @type {string} */
+RuntimeStyle.prototype.counterReset;
+
+/** @type {string} */
+RuntimeStyle.prototype.cssText;
+
+/** @type {string} */
+RuntimeStyle.prototype.cursor;
+
+/** @type {string} */
+RuntimeStyle.prototype.direction;
+
+/** @type {string} */
+RuntimeStyle.prototype.emptyCells;
+
+/** @type {string} */
+RuntimeStyle.prototype.font;
+
+/** @type {string} */
+RuntimeStyle.prototype.fontFamily;
+
+/** @type {string} */
+RuntimeStyle.prototype.fontSize;
+
+/** @type {string} */
+RuntimeStyle.prototype.fontSizeAdjust;
+
+/** @type {string} */
+RuntimeStyle.prototype.fontStretch;
+
+/** @type {string} */
+RuntimeStyle.prototype.fontStyle;
+
+/** @type {string} */
+RuntimeStyle.prototype.fontVariant;
+
+/** @type {string} */
+RuntimeStyle.prototype.fontWeight;
+
+/** @type {string} */
+RuntimeStyle.prototype.height;
+
+/** @type {string} */
+RuntimeStyle.prototype.imeMode;
+
+/** @type {string} */
+RuntimeStyle.prototype.layoutFlow;
+
+/** @type {string} */
+RuntimeStyle.prototype.layoutGrid;
+
+/** @type {string} */
+RuntimeStyle.prototype.layoutGridChar;
+
+/** @type {string} */
+RuntimeStyle.prototype.layoutGridLine;
+
+/** @type {string} */
+RuntimeStyle.prototype.layoutGridMode;
+
+/** @type {string} */
+RuntimeStyle.prototype.layoutGridType;
+
+/** @type {string} */
+RuntimeStyle.prototype.left;
+
+/** @type {string} */
+RuntimeStyle.prototype.letterSpacing;
+
+/** @type {string} */
+RuntimeStyle.prototype.lineBreak;
+
+/** @type {string} */
+RuntimeStyle.prototype.lineHeight;
+
+/** @type {string} */
+RuntimeStyle.prototype.listStyle;
+
+/** @type {string} */
+RuntimeStyle.prototype.listStyleImage;
+
+/** @type {string} */
+RuntimeStyle.prototype.listStylePosition;
+
+/** @type {string} */
+RuntimeStyle.prototype.listStyleType;
+
+/** @type {string} */
+RuntimeStyle.prototype.margin;
+
+/** @type {string} */
+RuntimeStyle.prototype.marginBottom;
+
+/** @type {string} */
+RuntimeStyle.prototype.marginLeft;
+
+/** @type {string} */
+RuntimeStyle.prototype.marginRight;
+
+/** @type {string} */
+RuntimeStyle.prototype.marginTop;
+
+/** @type {string} */
+RuntimeStyle.prototype.maxHeight;
+
+/** @type {string} */
+RuntimeStyle.prototype.maxWidth;
+
+/** @type {string} */
+RuntimeStyle.prototype.minHeight;
+
+/** @type {string} */
+RuntimeStyle.prototype.minWidth;
+
+/** @type {string} */
+RuntimeStyle.prototype.msBlockProgression;
+
+/** @type {string} */
+RuntimeStyle.prototype.msInterpolationMode;
+
+/** @type {string} */
+RuntimeStyle.prototype.msProgressAppearance;
+
+/** @type {string} */
+RuntimeStyle.prototype.opacity;
+
+/** @type {string} */
+RuntimeStyle.prototype.orphans;
+
+/** @type {string} */
+RuntimeStyle.prototype.outline;
+
+/** @type {string} */
+RuntimeStyle.prototype.outlineColor;
+
+/** @type {string} */
+RuntimeStyle.prototype.outlineStyle;
+
+/** @type {string} */
+RuntimeStyle.prototype.outlineWidth;
+
+/** @type {string} */
+RuntimeStyle.prototype.overflow;
+
+/** @type {string} */
+RuntimeStyle.prototype.overflowX;
+
+/** @type {string} */
+RuntimeStyle.prototype.overflowY;
+
+/** @type {string} */
+RuntimeStyle.prototype.padding;
+
+/** @type {string} */
+RuntimeStyle.prototype.paddingBottom;
+
+/** @type {string} */
+RuntimeStyle.prototype.paddingLeft;
+
+/** @type {string} */
+RuntimeStyle.prototype.paddingRight;
+
+/** @type {string} */
+RuntimeStyle.prototype.paddingTop;
+
+/** @type {string} */
+RuntimeStyle.prototype.pageBreakAfter;
+
+/** @type {string} */
+RuntimeStyle.prototype.pageBreakBefore;
+
+/** @type {string} */
+RuntimeStyle.prototype.pageBreakInside;
+
+/** @type {string} */
+RuntimeStyle.prototype.pixelBottom;
+
+/** @type {string} */
+RuntimeStyle.prototype.pixelHeight;
+
+/** @type {string} */
+RuntimeStyle.prototype.pixelLeft;
+
+/** @type {string} */
+RuntimeStyle.prototype.pixelRight;
+
+/** @type {string} */
+RuntimeStyle.prototype.pixelTop;
+
+/** @type {string} */
+RuntimeStyle.prototype.pixelWidth;
+
+/** @type {string} */
+RuntimeStyle.prototype.posBottom;
+
+/** @type {string} */
+RuntimeStyle.prototype.posHeight;
+
+/** @type {string} */
+RuntimeStyle.prototype.position;
+
+/** @type {string} */
+RuntimeStyle.prototype.posLeft;
+
+/** @type {string} */
+RuntimeStyle.prototype.posRight;
+
+/** @type {string} */
+RuntimeStyle.prototype.posTop;
+
+/** @type {string} */
+RuntimeStyle.prototype.posWidth;
+
+/** @type {string} */
+RuntimeStyle.prototype.quotes;
+
+/** @type {string} */
+RuntimeStyle.prototype.right;
+
+/** @type {string} */
+RuntimeStyle.prototype.rubyAlign;
+
+/** @type {string} */
+RuntimeStyle.prototype.rubyOverhang;
+
+/** @type {string} */
+RuntimeStyle.prototype.rubyPosition;
+
+/** @type {string} */
+RuntimeStyle.prototype.scrollbar3dLightColor;
+
+/** @type {string} */
+RuntimeStyle.prototype.scrollbarArrowColor;
+
+/** @type {string} */
+RuntimeStyle.prototype.scrollbarBaseColor;
+
+/** @type {string} */
+RuntimeStyle.prototype.scrollbarDarkShadowColor;
+
+/** @type {string} */
+RuntimeStyle.prototype.scrollbarFaceColor;
+
+/** @type {string} */
+RuntimeStyle.prototype.scrollbarHighlightColor;
+
+/** @type {string} */
+RuntimeStyle.prototype.scrollbarShadowColor;
+
+/** @type {string} */
+RuntimeStyle.prototype.scrollbarTrackColor;
+
+/** @type {string} */
+RuntimeStyle.prototype.styleFloat;
+
+/** @type {string} */
+RuntimeStyle.prototype.tableLayout;
+
+/** @type {string} */
+RuntimeStyle.prototype.textAlign;
+
+/** @type {string} */
+RuntimeStyle.prototype.textAlignLast;
+
+/** @type {string} */
+RuntimeStyle.prototype.textAutospace;
+
+/** @type {string} */
+RuntimeStyle.prototype.textDecoration;
+
+/** @type {string} */
+RuntimeStyle.prototype.textDecorationBlink;
+
+/** @type {string} */
+RuntimeStyle.prototype.textDecorationLineThrough;
+
+/** @type {string} */
+RuntimeStyle.prototype.textDecorationNone;
+
+/** @type {string} */
+RuntimeStyle.prototype.textDecorationOverline;
+
+/** @type {string} */
+RuntimeStyle.prototype.textDecorationUnderline;
+
+/** @type {string} */
+RuntimeStyle.prototype.textIndent;
+
+/** @type {string} */
+RuntimeStyle.prototype.textJustify;
+
+/** @type {string} */
+RuntimeStyle.prototype.textKashidaSpace;
+
+/** @type {string} */
+RuntimeStyle.prototype.textOverflow;
+
+/** @type {string} */
+RuntimeStyle.prototype.textTransform;
+
+/** @type {string} */
+RuntimeStyle.prototype.textUnderlinePosition;
+
+/** @type {string} */
+RuntimeStyle.prototype.top;
+
+/** @type {string} */
+RuntimeStyle.prototype.unicodeBidi;
+
+/** @type {string} */
+RuntimeStyle.prototype.verticalAlign;
+
+/** @type {string} */
+RuntimeStyle.prototype.visibility;
+
+/** @type {string} */
+RuntimeStyle.prototype.widows;
+
+/** @type {string} */
+RuntimeStyle.prototype.width;
+
+/** @type {string} */
+RuntimeStyle.prototype.wordBreak
+
+/** @type {string} */
+RuntimeStyle.prototype.wordSpacing;
+
+/** @type {string} */
+RuntimeStyle.prototype.wordWrap;
+
+/** @type {string} */
+RuntimeStyle.prototype.writingMode;
+
+/** @type {string} */
+RuntimeStyle.prototype.zIndex
+
+/** @type {string} */
+RuntimeStyle.prototype.zoom;
+
+/**
+ * @constructor
+ */
+function CurrentStyle()
+{
+	//
+}
+
+/** @type {string} */
+CurrentStyle.prototype.accelerator;
+
+/** @type {string} */
+CurrentStyle.prototype.animation;
+
+/** @type {string} */
+CurrentStyle.prototype.animationDelay;
+
+/** @type {string} */
+CurrentStyle.prototype.animationDirection;
+
+/** @type {string} */
+CurrentStyle.prototype.animationDuration;
+
+/** @type {string} */
+CurrentStyle.prototype.animationFillMode;
+
+/** @type {string} */
+CurrentStyle.prototype.animationIterationCount;
+
+/** @type {string} */
+CurrentStyle.prototype.animationName;
+
+/** @type {string} */
+CurrentStyle.prototype.animationPlayState;
+
+/** @type {string} */
+CurrentStyle.prototype.animationTimingFunction;
+
+/** @type {string} */
+CurrentStyle.prototype.backfaceVisibility;
+
+/** @type {string} */
+CurrentStyle.prototype.background;
+
+/** @type {string} */
+CurrentStyle.prototype.backgroundAttachment;
+
+/** @type {string} */
+CurrentStyle.prototype.backgroundClip;
+
+/** @type {string} */
+CurrentStyle.prototype.backgroundColor;
+
+/** @type {string} */
+CurrentStyle.prototype.backgroundImage;
+
+/** @type {string} */
+CurrentStyle.prototype.backgroundOrigin;
+
+/** @type {string} */
+CurrentStyle.prototype.backgroundPosition;
+
+/** @type {string} */
+CurrentStyle.prototype.backgroundPositionX;
+
+/** @type {string} */
+CurrentStyle.prototype.backgroundPositionY;
+
+/** @type {string} */
+CurrentStyle.prototype.backgroundRepeat;
+
+/** @type {string} */
+CurrentStyle.prototype.backgroundSize;
+
+/** @type {string} */
+CurrentStyle.prototype.baselineShift;
+
+/** @type {string} */
+CurrentStyle.prototype.behavior;
+
+/** @type {string} */
+CurrentStyle.prototype.blockDirection;
+
+/** @type {string} */
+CurrentStyle.prototype.border;
+
+/** @type {string} */
+CurrentStyle.prototype.borderBottom;
+
+/** @type {string} */
+CurrentStyle.prototype.borderBottomColor;
+
+/** @type {string} */
+CurrentStyle.prototype.borderBottomLeftRadius;
+
+/** @type {string} */
+CurrentStyle.prototype.borderBottomRightRadius;
+
+/** @type {string} */
+CurrentStyle.prototype.borderBottomStyle;
+
+/** @type {string} */
+CurrentStyle.prototype.borderBottomWidth;
+
+/** @type {string} */
+CurrentStyle.prototype.borderCollapse;
+
+/** @type {string} */
+CurrentStyle.prototype.borderColor;
+
+/** @type {string} */
+CurrentStyle.prototype.borderLeft;
+
+/** @type {string} */
+CurrentStyle.prototype.borderLeftColor;
+
+/** @type {string} */
+CurrentStyle.prototype.borderLeftStyle;
+
+/** @type {string} */
+CurrentStyle.prototype.borderLeftWidth;
+
+/** @type {string} */
+CurrentStyle.prototype.borderRadius;
+
+/** @type {string} */
+CurrentStyle.prototype.borderRight;
+
+/** @type {string} */
+CurrentStyle.prototype.borderRightColor;
+
+/** @type {string} */
+CurrentStyle.prototype.borderRightStyle;
+
+/** @type {string} */
+CurrentStyle.prototype.borderRightWidth;
+
+/** @type {string} */
+CurrentStyle.prototype.borderSpacing;
+
+/** @type {string} */
+CurrentStyle.prototype.borderStyle;
+
+/** @type {string} */
+CurrentStyle.prototype.borderTop;
+
+/** @type {string} */
+CurrentStyle.prototype.borderTopColor;
+
+/** @type {string} */
+CurrentStyle.prototype.borderTopLeftRadius;
+
+/** @type {string} */
+CurrentStyle.prototype.borderTopRightRadius;
+
+/** @type {string} */
+CurrentStyle.prototype.borderTopStyle;
+
+/** @type {string} */
+CurrentStyle.prototype.borderTopWidth;
+
+/** @type {string} */
+CurrentStyle.prototype.borderWidth;
+
+/** @type {string} */
+CurrentStyle.prototype.bottom;
+
+/** @type {string} */
+CurrentStyle.prototype.boxShadow;
+
+/** @type {string} */
+CurrentStyle.prototype.boxSizing;
+
+/** @type {string} */
+CurrentStyle.prototype.breakAfter;
+
+/** @type {string} */
+CurrentStyle.prototype.breakBefore;
+
+/** @type {string} */
+CurrentStyle.prototype.breakInside;
+
+/** @type {string} */
+CurrentStyle.prototype.captionSide;
+
+/** @type {string} */
+CurrentStyle.prototype.clear;
+
+/** @type {string} */
+CurrentStyle.prototype.clip;
+
+/** @type {string} */
+CurrentStyle.prototype.clipBottom;
+
+/** @type {string} */
+CurrentStyle.prototype.clipLeft;
+
+/** @type {string} */
+CurrentStyle.prototype.clipPath;
+
+/** @type {string} */
+CurrentStyle.prototype.clipRight;
+
+/** @type {string} */
+CurrentStyle.prototype.clipTop;
+
+/** @type {string} */
+CurrentStyle.prototype.color;
+
+/** @type {string} */
+CurrentStyle.prototype.columnCount
+
+/** @type {string} */
+CurrentStyle.prototype.columnFill;
+
+/** @type {string} */
+CurrentStyle.prototype.columnGap;
+
+/** @type {string} */
+CurrentStyle.prototype.columnRule;
+
+/** @type {string} */
+CurrentStyle.prototype.columnRuleColor;
+
+/** @type {string} */
+CurrentStyle.prototype.columnRuleStyle;
+
+/** @type {string} */
+CurrentStyle.prototype.columnRuleWidth;
+
+/** @type {string} */
+CurrentStyle.prototype.columnSpan;
+
+/** @type {string} */
+CurrentStyle.prototype.columnWidth;
+
+/** @type {string} */
+CurrentStyle.prototype.constructor;
+
+/** @type {string} */
+CurrentStyle.prototype.content;
+
+/** @type {string} */
+CurrentStyle.prototype.counterIncrement;
+
+/** @type {string} */
+CurrentStyle.prototype.counterReset;
+
+/** @type {string} */
+CurrentStyle.prototype.cssFloat;
+
+/** @type {string} */
+CurrentStyle.prototype.cssText;
+
+/** @type {string} */
+CurrentStyle.prototype.cursor;
+
+/** @type {string} */
+CurrentStyle.prototype.direction;
+
+/** @type {string} */
+CurrentStyle.prototype.display;
+
+/** @type {string} */
+CurrentStyle.prototype.dominantBaseline;
+
+/** @type {string} */
+CurrentStyle.prototype.emptyCells;
+
+/** @type {string} */
+CurrentStyle.prototype.fill;
+
+/** @type {string} */
+CurrentStyle.prototype.fillOpacity;
+
+/** @type {string} */
+CurrentStyle.prototype.fillRule;
+
+/** @type {string} */
+CurrentStyle.prototype.filter;
+
+/** @type {string} */
+CurrentStyle.prototype.font;
+
+/** @type {string} */
+CurrentStyle.prototype.fontFamily;
+
+/** @type {string} */
+CurrentStyle.prototype.fontSize;
+
+/** @type {string} */
+CurrentStyle.prototype.fontSizeAdjust;
+
+/** @type {string} */
+CurrentStyle.prototype.fontStretch;
+
+/** @type {string} */
+CurrentStyle.prototype.fontStyle;
+
+/** @type {string} */
+CurrentStyle.prototype.fontVariant;
+
+/** @type {string} */
+CurrentStyle.prototype.fontWeight;
+
+/** @type {string} */
+CurrentStyle.prototype.fontWeight;
+
+/** @type {string} */
+CurrentStyle.prototype.glyphOrientationHorizontal;
+
+/** @type {string} */
+CurrentStyle.prototype.glyphOrientationVertical;
+
+/** @type {string} */
+CurrentStyle.prototype.hasLayout;
+
+/** @type {string} */
+CurrentStyle.prototype.height;
+
+/** @type {string} */
+CurrentStyle.prototype.imeMode;
+
+/** @type {string} */
+CurrentStyle.prototype.kerning;
+
+/** @type {string} */
+CurrentStyle.prototype.layoutFlow;
+
+/** @type {string} */
+CurrentStyle.prototype.layoutGrid;
+
+/** @type {string} */
+CurrentStyle.prototype.layoutGridChar;
+
+/** @type {string} */
+CurrentStyle.prototype.layoutGridLine;
+
+/** @type {string} */
+CurrentStyle.prototype.layoutGridMode;
+
+/** @type {string} */
+CurrentStyle.prototype.layoutGridType;
+
+/** @type {string} */
+CurrentStyle.prototype.left;
+
+/** @type {string} */
+CurrentStyle.prototype.length;
+
+/** @type {string} */
+CurrentStyle.prototype.letterSpacing;
+
+/** @type {string} */
+CurrentStyle.prototype.lineBreak;
+
+/** @type {string} */
+CurrentStyle.prototype.lineHeight;
+
+/** @type {string} */
+CurrentStyle.prototype.listStyle;
+
+/** @type {string} */
+CurrentStyle.prototype.listStyleImage;
+
+/** @type {string} */
+CurrentStyle.prototype.listStylePosition;
+
+/** @type {string} */
+CurrentStyle.prototype.listStyleType;
+
+/** @type {string} */
+CurrentStyle.prototype.margin;
+
+/** @type {string} */
+CurrentStyle.prototype.marginBottom;
+
+/** @type {string} */
+CurrentStyle.prototype.marginLeft;
+
+/** @type {string} */
+CurrentStyle.prototype.marginRight;
+
+/** @type {string} */
+CurrentStyle.prototype.marginTop;
+
+/** @type {string} */
+CurrentStyle.prototype.marker;
+
+/** @type {string} */
+CurrentStyle.prototype.markerEnd;
+
+/** @type {string} */
+CurrentStyle.prototype.markerMid;
+
+/** @type {string} */
+CurrentStyle.prototype.markerStart;
+
+/** @type {string} */
+CurrentStyle.prototype.mask;
+
+/** @type {string} */
+CurrentStyle.prototype.maxHeight;
+
+/** @type {string} */
+CurrentStyle.prototype.maxWidth;
+
+/** @type {string} */
+CurrentStyle.prototype.minHeight;
+
+/** @type {string} */
+CurrentStyle.prototype.minWidth;
+
+/** @type {string} */
+CurrentStyle.prototype.msBlockProgression;
+
+/** @type {string} */
+CurrentStyle.prototype.msBoxAlign;
+
+/** @type {string} */
+CurrentStyle.prototype.msBoxDirection;
+
+/** @type {string} */
+CurrentStyle.prototype.msBoxFlex;
+
+/** @type {string} */
+CurrentStyle.prototype.msBoxLineProgression;
+
+/** @type {string} */
+CurrentStyle.prototype.msBoxLines;
+
+/** @type {string} */
+CurrentStyle.prototype.msBoxOrdinalGroup;
+
+/** @type {string} */
+CurrentStyle.prototype.msBoxOrient;
+
+/** @type {string} */
+CurrentStyle.prototype.msGridColumn;
+
+/** @type {string} */
+CurrentStyle.prototype.msGridColumnAlign;
+
+/** @type {string} */
+CurrentStyle.prototype.msGridColumns;
+
+/** @type {string} */
+CurrentStyle.prototype.msGridColumnSpan;
+
+/** @type {string} */
+CurrentStyle.prototype.msGridRow;
+
+/** @type {string} */
+CurrentStyle.prototype.msGridRowAlign;
+
+/** @type {string} */
+CurrentStyle.prototype.msGridRows;
+
+/** @type {string} */
+CurrentStyle.prototype.msGridRowSpan;
+
+/** @type {string} */
+CurrentStyle.prototype.msInterpolationMode;
+
+/** @type {string} */
+CurrentStyle.prototype.msProgressAppearance;
+
+/** @type {string} */
+CurrentStyle.prototype.opacity;
+
+/** @type {string} */
+CurrentStyle.prototype.orphans;
+
+/** @type {string} */
+CurrentStyle.prototype.outline;
+
+/** @type {string} */
+CurrentStyle.prototype.outlineColor;
+
+/** @type {string} */
+CurrentStyle.prototype.outlineStyle;
+
+/** @type {string} */
+CurrentStyle.prototype.outlineWidth;
+
+/** @type {string} */
+CurrentStyle.prototype.overflow;
+
+/** @type {string} */
+CurrentStyle.prototype.overflowX;
+
+/** @type {string} */
+CurrentStyle.prototype.overflowY;
+
+/** @type {string} */
+CurrentStyle.prototype.padding;
+
+/** @type {string} */
+CurrentStyle.prototype.paddingBottom;
+
+/** @type {string} */
+CurrentStyle.prototype.paddingLeft;
+
+/** @type {string} */
+CurrentStyle.prototype.paddingRight;
+
+/** @type {string} */
+CurrentStyle.prototype.paddingTop;
+
+/** @type {string} */
+CurrentStyle.prototype.pageBreakAfter;
+
+/** @type {string} */
+CurrentStyle.prototype.pageBreakBefore;
+
+/** @type {string} */
+CurrentStyle.prototype.pageBreakInside;
+
+/** @type {string} */
+CurrentStyle.prototype.parentRule;
+
+/** @type {string} */
+CurrentStyle.prototype.perspective;
+
+/** @type {string} */
+CurrentStyle.prototype.perspectiveOrigin;
+
+/** @type {string} */
+CurrentStyle.prototype.pointerEvents;
+
+/** @type {string} */
+CurrentStyle.prototype.position;
+
+/** @type {string} */
+CurrentStyle.prototype.quotes;
+
+/** @type {string} */
+CurrentStyle.prototype.right;
+
+/** @type {string} */
+CurrentStyle.prototype.rubyAlign;
+
+/** @type {string} */
+CurrentStyle.prototype.rubyOverhang;
+
+/** @type {string} */
+CurrentStyle.prototype.rubyPosition;
+
+/** @type {string} */
+CurrentStyle.prototype.scrollbar3dLightColor;
+
+/** @type {string} */
+CurrentStyle.prototype.scrollbarArrowColor;
+
+/** @type {string} */
+CurrentStyle.prototype.scrollbarBaseColor;
+
+/** @type {string} */
+CurrentStyle.prototype.scrollbarDarkShadowColor;
+
+/** @type {string} */
+CurrentStyle.prototype.scrollbarFaceColor;
+
+/** @type {string} */
+CurrentStyle.prototype.scrollbarHighlightColor;
+
+/** @type {string} */
+CurrentStyle.prototype.scrollbarShadowColor;
+
+/** @type {string} */
+CurrentStyle.prototype.scrollbarTrackColor;
+
+/** @type {string} */
+CurrentStyle.prototype.stopColor;
+
+/** @type {string} */
+CurrentStyle.prototype.stopOpacity;
+
+/** @type {string} */
+CurrentStyle.prototype.stroke;
+
+/** @type {string} */
+CurrentStyle.prototype.strokeDasharray;
+
+/** @type {string} */
+CurrentStyle.prototype.strokeDashoffset;
+
+/** @type {string} */
+CurrentStyle.prototype.strokeLinecap;
+
+/** @type {string} */
+CurrentStyle.prototype.strokeLinejoin;
+
+/** @type {string} */
+CurrentStyle.prototype.strokeMiterlimit;
+
+/** @type {string} */
+CurrentStyle.prototype.strokeOpacity;
+
+/** @type {string} */
+CurrentStyle.prototype.strokeWidth;
+
+/** @type {string} */
+CurrentStyle.prototype.styleFloat;
+
+/** @type {string} */
+CurrentStyle.prototype.tableLayout;
+
+/** @type {string} */
+CurrentStyle.prototype.textAlign;
+
+/** @type {string} */
+CurrentStyle.prototype.textAlignLast;
+
+/** @type {string} */
+CurrentStyle.prototype.textAutospace;
+
+/** @type {string} */
+CurrentStyle.prototype.textDecoration;
+
+/** @type {string} */
+CurrentStyle.prototype.textIndent;
+
+/** @type {string} */
+CurrentStyle.prototype.textJustify;
+
+/** @type {string} */
+CurrentStyle.prototype.textKashidaSpace;
+
+/** @type {string} */
+CurrentStyle.prototype.textOverflow;
+
+/** @type {string} */
+CurrentStyle.prototype.textTransform;
+
+/** @type {string} */
+CurrentStyle.prototype.textUnderlinePosition;
+
+/** @type {string} */
+CurrentStyle.prototype.top;
+
+/** @type {string} */
+CurrentStyle.prototype.transform;
+
+/** @type {string} */
+CurrentStyle.prototype.transformOrigin;
+
+/** @type {string} */
+CurrentStyle.prototype.transformStyle;
+
+/** @type {string} */
+CurrentStyle.prototype.transition;
+
+/** @type {string} */
+CurrentStyle.prototype.transitionDelay;
+
+/** @type {string} */
+CurrentStyle.prototype.transitionDuration;
+
+/** @type {string} */
+CurrentStyle.prototype.transitionProperty;
+
+/** @type {string} */
+CurrentStyle.prototype.transitionTimingFunction;
+
+/** @type {string} */
+CurrentStyle.prototype.unicodeBidi;
+
+/** @type {string} */
+CurrentStyle.prototype.verticalAlign;
+
+/** @type {string} */
+CurrentStyle.prototype.visibility;
+
+/** @type {string} */
+CurrentStyle.prototype.whiteSpace;
+
+/** @type {string} */
+CurrentStyle.prototype.widows;
+
+/** @type {string} */
+CurrentStyle.prototype.width;
+
+/** @type {string} */
+CurrentStyle.prototype.wordBreak;
+
+/** @type {string} */
+CurrentStyle.prototype.wordSpacing;
+
+/** @type {string} */
+CurrentStyle.prototype.wordWrap;
+
+/** @type {string} */
+CurrentStyle.prototype.writingMode;
+
+/** @type {string} */
+CurrentStyle.prototype.zIndex;
+
+/** @type {string} */
+CurrentStyle.prototype.zoom;
+
+/**
+ * @constructor
+ * @extends {Array}
+ */
+function DocumentNamespaces()
+{
+
+}
+
+/**
+ * @param {string} prefix
+ * @param {string} namespace
+ * @param {string=} behavior
+ */
+DocumentNamespaces.prototype.add = function (prefix, namespace, behavior) {};
+
+/**
+ * @param {number} index
+ * @return {Namespace}
+ */
+DocumentNamespaces.prototype.item = function (index) {};
+
+/**
+ * @see http://msdn.microsoft.com/en-us/library/ms535854(v=vs.85).aspx
+ * @constructor
+ */
+function Namespace()
+{
+
+}
+
+/** @type {string} */
+Namespace.prototype.name;
+
+/** @type {string} */
+Namespace.prototype.readyState;
+
+/** @type {string} */
+Namespace.prototype.urn;
