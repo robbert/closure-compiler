@@ -2719,6 +2719,7 @@ Namespace.prototype.readyState;
 /** @type {string} */
 Namespace.prototype.urn;
 
+/**
  * @type {number}
  * @see http://msdn.microsoft.com/en-us/library/ms534128%28v=vs.85%29.aspx
  */

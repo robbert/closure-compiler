@@ -966,7 +966,7 @@ CSS2Properties.prototype.backgroundRepeat;
  * @type {string}
  * @see http://www.w3.org/TR/css3-background/#the-background-size
  */
-CSSProperties.prototype.backgroundSize;
+CSS2Properties.prototype.backgroundSize;
 
 /**
  * @implicitCast
@@ -1715,7 +1715,7 @@ CSS2Properties.prototype.zIndex;
  * @type {string}
  * @see http://www.w3.org/TR/css3-background/#box-shadow
  */
-CSSProperties.prototype.boxShadow;
+CSS2Properties.prototype.boxShadow;
 
 /**
  * @type {string}

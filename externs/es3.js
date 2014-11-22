@@ -183,7 +183,6 @@ function eval(code) {}
  * @param {*=} opt_value
  * @return {!Object}
  * @nosideeffects
- * @return {Object}
  * @see http://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Objects/Object
  */
 function Object(opt_value) {}
