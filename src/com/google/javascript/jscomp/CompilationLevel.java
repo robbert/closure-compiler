@@ -175,6 +175,19 @@ public enum CompilationLevel {
     options.optimizeParameters = true;
     options.optimizeReturns = true;
     options.optimizeCalls = true;
+
+    // EXTREME_OPTIMIZATIONS
+    // Stricter warnings:
+    //options.reportMissingOverride = CheckLevel.WARNING;
+    //options.reportUnknownTypes = CheckLevel.WARNING; // Property doesn't exist anymore
+    options.aggressiveVarCheck = CheckLevel.WARNING;
+    options.checkMissingReturn = CheckLevel.WARNING;
+
+    // Obfuscation
+    options.aliasAllStrings = true;
+    options.moveFunctionDeclarations = true;
+    // options.aliasExternals = true; // Hurts performance
+    // options.collapsePropertiesOnExternTypes = true; // Property doesn't exist anymore
   }
 
   /**
