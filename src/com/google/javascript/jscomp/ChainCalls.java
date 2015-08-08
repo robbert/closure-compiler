@@ -15,8 +15,6 @@
  */
 package com.google.javascript.jscomp;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import com.google.javascript.jscomp.ControlFlowGraph.Branch;
 import com.google.javascript.jscomp.DefinitionsRemover.Definition;
 import com.google.javascript.jscomp.NodeTraversal.AbstractPostOrderCallback;
@@ -24,7 +22,9 @@ import com.google.javascript.jscomp.NodeTraversal.ScopedCallback;
 import com.google.javascript.jscomp.graph.DiGraph.DiGraphEdge;
 import com.google.javascript.rhino.Node;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -34,9 +34,9 @@ import java.util.Set;
  */
 class ChainCalls implements CompilerPass {
   private final AbstractCompiler compiler;
-  private final Set<Node> badFunctionNodes = Sets.newHashSet();
-  private final Set<Node> goodFunctionNodes = Sets.newHashSet();
-  private final List<CallSite> callSites = Lists.newArrayList();
+  private final Set<Node> badFunctionNodes = new HashSet<>();
+  private final Set<Node> goodFunctionNodes = new HashSet<>();
+  private final List<CallSite> callSites = new ArrayList<>();
   private SimpleDefinitionFinder defFinder;
   private GatherFunctions gatherFunctions = new GatherFunctions();
 
@@ -133,7 +133,10 @@ class ChainCalls implements CompilerPass {
           return;
         }
         if (!goodFunctionNodes.contains(rValue)) {
-          NodeTraversal.traverse(compiler, rValue, gatherFunctions);
+          // TODO(moz): In ES6, t.getScope() might return a scope that is not
+          // a valid cfg root, might need something like t.getCfgScope().
+          new NodeTraversal(compiler, gatherFunctions).traverseInnerNode(
+              rValue, rValue.getParent(), t.getScope());
           if (badFunctionNodes.contains(rValue)) {
             return;
           }

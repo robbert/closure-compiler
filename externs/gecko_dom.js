@@ -42,7 +42,7 @@ function HTMLSpanElement() {}
 Window.prototype.Components;
 
 /**
- * @type Window
+ * @type {Window}
  * @see https://developer.mozilla.org/en/DOM/window.content
  */
 Window.prototype.content;
@@ -90,6 +90,12 @@ Window.prototype.frames;
  * @see https://developer.mozilla.org/en/DOM/window.fullScreen
  */
 Window.prototype.fullScreen;
+
+/**
+ * @return {!Promise<!BatteryManager>}
+ * @see http://www.w3.org/TR/battery-status/
+ */
+Navigator.prototype.getBattery = function() {};
 
 /**
  * @see https://developer.mozilla.org/en/DOM/Storage#globalStorage
@@ -226,7 +232,7 @@ Window.prototype.alert = function(message) {};
  * @see https://developer.mozilla.org/en/DOM/window.atob
  * @nosideeffects
  */
-Window.prototype.atob = function(encodedData) {};
+function atob(encodedData) {}
 
 /** @see https://developer.mozilla.org/en/DOM/window.back */
 Window.prototype.back = function() {};
@@ -240,7 +246,7 @@ Window.prototype.blur = function() {};
  * @see https://developer.mozilla.org/en/DOM/window.btoa
  * @nosideeffects
  */
-Window.prototype.btoa = function(stringToEncode) {};
+function btoa(stringToEncode) {}
 
 /** @deprecated */
 Window.prototype.captureEvents;
@@ -259,14 +265,6 @@ Window.prototype.forward = function() {};
 
 /** @see https://developer.mozilla.org/en/DOM/window.getAttention */
 Window.prototype.getAttention = function() {};
-
-/**
- * @param {Element} element
- * @param {?string=} pseudoElt
- * @return {CSSStyleDeclaration}
- * @nosideeffects
- */
-Window.prototype.getComputedStyle = function(element, pseudoElt) {};
 
 /**
  * @return {Selection}
@@ -1408,3 +1406,11 @@ CSSStyleDeclaration.prototype.MozUserSelect;
 
 /** @type {string} */
 CSSStyleDeclaration.prototype.MozWindowShadow;
+
+/**
+ * @param {Element} element
+ * @param {?string=} pseudoElt
+ * @return {CSSStyleDeclaration}
+ * @nosideeffects
+ */
+function getComputedStyle(element, pseudoElt) {}

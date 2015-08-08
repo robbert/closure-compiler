@@ -19,17 +19,18 @@ package com.google.javascript.jscomp;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import com.google.javascript.jscomp.NodeTraversal.AbstractPostOrderCallback;
+import com.google.javascript.jscomp.parsing.parser.util.format.SimpleFormat;
 import com.google.javascript.rhino.IR;
 import com.google.javascript.rhino.JSDocInfo;
 import com.google.javascript.rhino.JSTypeExpression;
 import com.google.javascript.rhino.Node;
 import com.google.javascript.rhino.Token;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -80,6 +81,10 @@ class ProcessClosurePrimitives extends AbstractPostOrderCallback
       "Provided symbol declared with type Object. This is rarely useful. "
       + "For more information see "
       + "https://github.com/google/closure-compiler/wiki/A-word-about-the-type-Object");
+
+  static final DiagnosticType CLASS_NAMESPACE_ERROR = DiagnosticType.error(
+      "JSC_CLASS_NAMESPACE_ERROR",
+    "\"{0}\" cannot be both provided and declared as a class. Try var {0} = class '{'...'}'");
 
   static final DiagnosticType FUNCTION_NAMESPACE_ERROR = DiagnosticType.error(
       "JSC_FUNCTION_NAMESPACE_ERROR",
@@ -151,16 +156,16 @@ class ProcessClosurePrimitives extends AbstractPostOrderCallback
 
   // The goog.provides must be processed in a deterministic order.
   private final Map<String, ProvidedName> providedNames =
-      Maps.newLinkedHashMap();
+       new LinkedHashMap<>();
 
-  private final Set<String> knownClosureSubclasses = Sets.newHashSet();
+  private final Set<String> knownClosureSubclasses = new HashSet<>();
 
   private final List<UnrecognizedRequire> unrecognizedRequires =
-      Lists.newArrayList();
-  private final Set<String> exportedVariables = Sets.newHashSet();
+       new ArrayList<>();
+  private final Set<String> exportedVariables = new HashSet<>();
   private final CheckLevel requiresLevel;
   private final PreprocessorSymbolTable preprocessorSymbolTable;
-  private final List<Node> defineCalls = Lists.newArrayList();
+  private final List<Node> defineCalls = new ArrayList<>();
   private final boolean preserveGoogRequires;
 
   ProcessClosurePrimitives(AbstractCompiler compiler,
@@ -222,7 +227,7 @@ class ProcessClosurePrimitives extends AbstractPostOrderCallback
 
     Node replacement = NodeUtil.newQNameDeclaration(
         compiler, name, value, n.getJSDocInfo());
-    replacement.useSourceInfoIfMissingFromForTree(n);
+    replacement.useSourceInfoIfMissingFromForTree(parent);
     parent.getParent().replaceChild(parent, replacement);
     compiler.reportCodeChange();
   }
@@ -241,8 +246,7 @@ class ProcessClosurePrimitives extends AbstractPostOrderCallback
         Node left = n.getFirstChild();
         if (left.isGetProp()) {
           Node name = left.getFirstChild();
-          if (name.isName() &&
-              GOOG.equals(name.getString())) {
+          if (name.isName() && GOOG.equals(name.getString())) {
             // For the sake of simplicity, we report code changes
             // when we see a provides/requires, and don't worry about
             // reporting the change when we actually do the replacement.
@@ -308,10 +312,20 @@ class ProcessClosurePrimitives extends AbstractPostOrderCallback
         handleTypedefDefinition(t, n);
         break;
 
+      case Token.CLASS:
+        if (!t.inFunction() && !NodeUtil.isClassExpression(n)) {
+          String name = n.getFirstChild().getString();
+          ProvidedName pn = providedNames.get(name);
+          if (pn != null) {
+            compiler.report(t.makeError(n, CLASS_NAMESPACE_ERROR, name));
+          }
+        }
+        break;
+
       case Token.FUNCTION:
         // If this is a declaration of a provided named function, this is an
         // error. Hoisted functions will explode if they're provided.
-        if (t.inGlobalScope() &&
+        if (!t.inFunction() &&
             !NodeUtil.isFunctionExpression(n)) {
           String name = n.getFirstChild().getString();
           ProvidedName pn = providedNames.get(name);
@@ -333,7 +347,7 @@ class ProcessClosurePrimitives extends AbstractPostOrderCallback
   }
 
   private boolean validPrimitiveCall(NodeTraversal t, Node n) {
-    if (!n.getParent().isExprResult() || !t.inGlobalScope()) {
+    if (!n.getParent().isExprResult() || t.inFunction()) {
       compiler.report(t.makeError(n, INVALID_CLOSURE_CALL_ERROR));
       return false;
     }
@@ -346,11 +360,13 @@ class ProcessClosurePrimitives extends AbstractPostOrderCallback
       HashMap<String, Node> builder = new HashMap<>();
       builder.putAll(compiler.getDefaultDefineValues());
       for (Node c : n.getFirstChild().children()) {
-         if (c.isStringKey() && isValidDefineValue(c.getFirstChild())) {
-           builder.put(c.getString(), c.getFirstChild().cloneTree());
-         } else {
-           reportBadClosureCommonDefinesDefinition(t, c);
-         }
+        if (c.isStringKey()
+            && c.getFirstChild() != null  // Shorthand assignment
+            && isValidDefineValue(c.getFirstChild())) {
+          builder.put(c.getString(), c.getFirstChild().cloneTree());
+        } else {
+          reportBadClosureCommonDefinesDefinition(t, c);
+        }
       }
       compiler.setDefaultDefineValues(ImmutableMap.copyOf(builder));
     }
@@ -464,7 +480,7 @@ class ProcessClosurePrimitives extends AbstractPostOrderCallback
   private void handleTypedefDefinition(
       NodeTraversal t, Node n) {
     JSDocInfo info = n.getFirstChild().getJSDocInfo();
-    if (t.inGlobalScope() && info != null && info.hasTypedefType()) {
+    if (!t.inFunction() && info != null && info.hasTypedefType()) {
       String name = n.getFirstChild().getQualifiedName();
       if (name != null) {
         ProvidedName pn = providedNames.get(name);
@@ -480,7 +496,7 @@ class ProcessClosurePrimitives extends AbstractPostOrderCallback
    */
   private void handleCandidateProvideDefinition(
       NodeTraversal t, Node n, Node parent) {
-    if (t.inGlobalScope()) {
+    if (!t.inFunction()) {
       String name = null;
       if (n.isName() && parent.isVar()) {
         name = n.getString();
@@ -536,6 +552,11 @@ class ProcessClosurePrimitives extends AbstractPostOrderCallback
     // If requested report uses of goog.base.
     t.report(n, USE_OF_GOOG_BASE);
 
+    if (baseUsedInClass(n)){
+      reportBadGoogBaseUse(t, n, "goog.base in ES6 class is not allowed. Use super instead.");
+      return;
+    }
+
     Node callee = n.getFirstChild();
     Node thisArg = callee.getNext();
     if (thisArg == null || !thisArg.isThis()) {
@@ -543,7 +564,7 @@ class ProcessClosurePrimitives extends AbstractPostOrderCallback
       return;
     }
 
-    Node enclosingFnNameNode = getEnclosingDeclNameNode(t);
+    Node enclosingFnNameNode = getEnclosingDeclNameNode(n);
     if (enclosingFnNameNode == null) {
       reportBadGoogBaseUse(t, n, "Could not find enclosing method.");
       return;
@@ -577,7 +598,7 @@ class ProcessClosurePrimitives extends AbstractPostOrderCallback
           callee,
           NodeUtil.newQName(
             compiler,
-            String.format("%s.call", baseClassNode.getQualifiedName()),
+            SimpleFormat.format("%s.call", baseClassNode.getQualifiedName()),
             callee, "goog.base"));
       compiler.reportCodeChange();
     } else {
@@ -604,7 +625,7 @@ class ProcessClosurePrimitives extends AbstractPostOrderCallback
           callee,
           NodeUtil.newQName(
             compiler,
-            String.format("%s.superClass_.%s.call",
+            SimpleFormat.format("%s.superClass_.%s.call",
                 className.getQualifiedName(), methodName),
             callee, "goog.base"));
       n.removeChild(methodNameNode);
@@ -640,6 +661,11 @@ class ProcessClosurePrimitives extends AbstractPostOrderCallback
     // Most of the logic here is just to make sure the AST's
     // structure is what we expect it to be.
 
+    if (baseUsedInClass(n)){
+      reportBadGoogBaseUse(t, n, "goog.base in ES6 class is not allowed. Use super instead.");
+      return;
+    }
+
     Node callTarget = n.getFirstChild();
     Node baseContainerNode = callTarget.getFirstChild();
     if (!baseContainerNode.isUnscopedQualifiedName()) {
@@ -648,7 +674,7 @@ class ProcessClosurePrimitives extends AbstractPostOrderCallback
     }
     String baseContainer = callTarget.getFirstChild().getQualifiedName();
 
-    Node enclosingFnNameNode = getEnclosingDeclNameNode(t);
+    Node enclosingFnNameNode = getEnclosingDeclNameNode(n);
     if (enclosingFnNameNode == null
         || !enclosingFnNameNode.isUnscopedQualifiedName()) {
       // some unknown container method.
@@ -721,7 +747,7 @@ class ProcessClosurePrimitives extends AbstractPostOrderCallback
           callee,
           NodeUtil.newQName(
             compiler,
-            String.format("%s.call", baseClassNode.getQualifiedName()),
+            SimpleFormat.format("%s.call", baseClassNode.getQualifiedName()),
             callee, enclosingQname + ".base"));
       n.removeChild(methodNameNode);
       compiler.reportCodeChange();
@@ -774,7 +800,7 @@ class ProcessClosurePrimitives extends AbstractPostOrderCallback
           callee,
           NodeUtil.newQName(
             compiler,
-            String.format("%s.superClass_.%s.call",
+            SimpleFormat.format("%s.superClass_.%s.call",
                 className.getQualifiedName(), methodName),
             callee, enclosingQname + ".base"));
       n.removeChild(methodNameNode);
@@ -800,27 +826,19 @@ class ProcessClosurePrimitives extends AbstractPostOrderCallback
    * Returns the qualified name node of the function whose scope we're in,
    * or null if it cannot be found.
    */
-  private static Node getEnclosingDeclNameNode(NodeTraversal t) {
-    Node scopeRoot = t.getScopeRoot();
-    if (NodeUtil.isFunctionDeclaration(scopeRoot)) {
-      // function x() {...}
-      return scopeRoot.getFirstChild();
-    } else {
-      Node parent = scopeRoot.getParent();
-      if (parent != null) {
-        if (parent.isAssign() ||
-            parent.getLastChild() == scopeRoot &&
-            parent.getFirstChild().isQualifiedName()) {
-          // x.y.z = function() {...};
-          return parent.getFirstChild();
-        } else if (parent.isName()) {
-          // var x = function() {...};
-          return parent;
-        }
+  private static Node getEnclosingDeclNameNode(Node n) {
+    Node fn = NodeUtil.getEnclosingFunction(n);
+    return fn == null ? null : NodeUtil.getFunctionNameNode(fn);
+  }
+
+  /** Verify if goog.base call is used in a class */
+  private boolean baseUsedInClass(Node n){
+    for (Node curr = n; curr != null; curr = curr.getParent()){
+      if (curr.isClassMembers()) {
+        return true;
       }
     }
-
-    return null;
+    return false;
   }
 
   /** Reports an incorrect use of super-method calling. */
@@ -885,7 +903,7 @@ class ProcessClosurePrimitives extends AbstractPostOrderCallback
     if (verifySetCssNameMapping(t, left, arg)) {
       // Translate OBJECTLIT into SubstitutionMap. All keys and
       // values must be strings, or an error will be thrown.
-      final Map<String, String> cssNames = Maps.newHashMap();
+      final Map<String, String> cssNames = new HashMap<>();
 
       for (Node key = arg.getFirstChild(); key != null;
           key = key.getNext()) {
@@ -917,7 +935,7 @@ class ProcessClosurePrimitives extends AbstractPostOrderCallback
 
       if (style == CssRenamingMap.Style.BY_PART) {
         // Make sure that no keys contain -'s
-        List<String> errors = Lists.newArrayList();
+        List<String> errors = new ArrayList<>();
         for (String key : cssNames.keySet()) {
           if (key.contains("-")) {
             errors.add(key);
@@ -932,7 +950,7 @@ class ProcessClosurePrimitives extends AbstractPostOrderCallback
         // n^2 check over the map which makes sure that if "a-b" in
         // the map, then map(a-b) = map(a)-map(b).
         // To speed things up, only consider cases where len(b) <= 10
-        List<String> errors = Lists.newArrayList();
+        List<String> errors = new ArrayList<>();
         for (Map.Entry<String, String> b : cssNames.entrySet()) {
           if (b.getKey().length() > 10) {
             continue;
@@ -988,7 +1006,9 @@ class ProcessClosurePrimitives extends AbstractPostOrderCallback
     if (!NodeUtil.isValidQualifiedName(compiler.getLanguageMode(), arg.getString())) {
       compiler.report(t.makeError(arg, INVALID_PROVIDE_ERROR,
           arg.getString(), compiler.getLanguageMode().toString()));
+      return false;
     }
+
     return true;
   }
 
@@ -1018,7 +1038,7 @@ class ProcessClosurePrimitives extends AbstractPostOrderCallback
     }
 
     String name = args.getString();
-    if (!NodeUtil.isValidQualifiedName(name)) {
+    if (!NodeUtil.isValidQualifiedName(compiler.getLanguageMode(), name)) {
       compiler.report(t.makeError(args, INVALID_DEFINE_NAME_ERROR, name));
       return false;
     }

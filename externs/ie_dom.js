@@ -307,7 +307,7 @@ Window.prototype.clearImmediate = function(immediateID) {};
 
 /**
  * @see http://msdn.microsoft.com/en-us/library/ms535220(VS.85).aspx
- * @type ClipboardData
+ * @type {ClipboardData}
  */
 Window.prototype.clipboardData;
 
@@ -1411,6 +1411,12 @@ XDomainRequest.prototype.contentType;
  * @see http://msdn.microsoft.com/en-us/library/ms533542(v=vs.85).aspx
  */
 Navigator.prototype.browserLanguage;
+
+/**
+ * @type {number}
+ * @see https://msdn.microsoft.com/en-us/library/ie/hh772144(v=vs.85).aspx
+ */
+Navigator.prototype.msMaxTouchPoints;
 
 /**
  * @type {boolean}

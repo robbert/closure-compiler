@@ -183,8 +183,7 @@ public class RefasterJsScannerTest {
         + "obj.bar();\n"
         + "obj.baz();\n"
         + postamble;
-    // TODO(mknichel): Correctly handle removing newlines in the multiline case.
-    String expectedCode = preamble + "\n\n" + postamble;
+    String expectedCode = preamble + "\n" + postamble;
     String template = ""
         + "/**\n"
         + " * @param {FooType} foo\n"
@@ -484,6 +483,25 @@ public class RefasterJsScannerTest {
         + "}\n"
         + "function after_template() {\n"
         + "  getNewIndex();\n"
+        + "}\n";
+    assertChanges(externs, originalCode, expectedCode, template);
+  }
+
+  @Test
+  public void test_functionCalls() throws Exception {
+    // Assigning the function as a property of an object is important to this test since it
+    // tracks a corner case in the TemplateAstMatcher code.
+    String externs = "var foo = {}; /** @return {number} */ foo.someFn = function() {}";
+    String originalCode = "foo.someFn();";
+    String expectedCode = "foo.someFn().someOtherFn();";
+    String template = ""
+        + "/** @param {function():number} fn */\n"
+        + "function before_template(fn) {\n"
+        + "  fn();\n"
+        + "}\n"
+        + "/** @param {function():number} fn */\n"
+        + "function after_template(fn) {\n"
+        + "  fn().someOtherFn();\n"
         + "}\n";
     assertChanges(externs, originalCode, expectedCode, template);
   }

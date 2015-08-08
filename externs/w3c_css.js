@@ -2004,6 +2004,11 @@ Document.prototype.elementFromPoint = function(x, y) {};
  */
 Document.prototype.caretPositionFromPoint = function(x, y) {};
 
+/**
+ * @type {Element}
+ * @see http://dev.w3.org/csswg/cssom-view/#dom-document-scrollingelement
+ */
+Document.prototype.scrollingElement;
 
 /**
  * @constructor
@@ -2324,7 +2329,7 @@ var FontFaceDescriptors;
 /**
  * @constructor
  * @param {string} fontFamily
- * @param {string} source
+ * @param {(string|ArrayBuffer|ArrayBufferView)} source
  * @param {!FontFaceDescriptors} descriptors
  * @see http://dev.w3.org/csswg/css-font-loading/#font-face-constructor
  */

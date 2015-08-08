@@ -16,13 +16,14 @@
 
 package com.google.javascript.jscomp;
 
+import static com.google.common.truth.Truth.assertThat;
 
 import com.google.common.base.Joiner;
-import com.google.common.collect.Lists;
 
 import junit.framework.TestCase;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -31,7 +32,7 @@ import java.util.List;
  * Unit test for {@link JsMessageExtractor}.
  *
  */
-public class JsMessageExtractorTest extends TestCase {
+public final class JsMessageExtractorTest extends TestCase {
 
   private JsMessage.Style mode;
 
@@ -54,7 +55,7 @@ public class JsMessageExtractorTest extends TestCase {
 
   private JsMessage extractMessage(String... js) {
     Collection<JsMessage> messages = extractMessages(js);
-    assertEquals(1, messages.size());
+    assertThat(messages).hasSize(1);
     return messages.iterator().next();
   }
 
@@ -63,10 +64,9 @@ public class JsMessageExtractorTest extends TestCase {
       extractMessage("if (true) {}}");
       fail("Expected exception");
     } catch (RuntimeException e) {
-      assertTrue(e.getMessage().contains("JSCompiler errors\n"));
-      assertTrue(e.getMessage().contains(
-          "testcode:1: ERROR - Parse error"));
-      assertTrue(e.getMessage().contains("if (true) {}}\n"));
+      assertThat(e.getMessage()).contains("JSCompiler errors\n");
+      assertThat(e.getMessage()).contains("testcode:1: ERROR - Parse error");
+      assertThat(e.getMessage()).contains("if (true) {}}\n");
     }
   }
 
@@ -206,26 +206,26 @@ public class JsMessageExtractorTest extends TestCase {
         "  var MSG_UNNAMED_2 = goog.getMsg('bar');",
         "}");
 
-    assertEquals(2, msgs.size());
+    assertThat(msgs).hasSize(2);
     final Iterator<JsMessage> iter = msgs.iterator();
     assertEquals("foo", iter.next().toString());
     assertEquals("bar", iter.next().toString());
   }
 
   public void testMeaningAnnotation() {
-    List<JsMessage> msgs = Lists.newArrayList(
+    List<JsMessage> msgs = new ArrayList<>(
         extractMessages(
             "var MSG_UNNAMED_1 = goog.getMsg('foo');",
             "var MSG_UNNAMED_2 = goog.getMsg('foo');"));
-    assertEquals(2, msgs.size());
+    assertThat(msgs).hasSize(2);
     assertEquals(msgs.get(1).getId(), msgs.get(0).getId());
     assertEquals(msgs.get(0), msgs.get(1));
 
-    msgs = Lists.newArrayList(
+    msgs = new ArrayList<>(
         extractMessages(
             "var MSG_UNNAMED_1 = goog.getMsg('foo');",
             "/** @meaning bar */ var MSG_UNNAMED_2 = goog.getMsg('foo');"));
-    assertEquals(2, msgs.size());
+    assertThat(msgs).hasSize(2);
     assertFalse(msgs.get(0).getId().equals(msgs.get(1).getId()));
   }
 

@@ -59,8 +59,7 @@ final class ArrowType extends JSType {
   // Whether the return type is inferred.
   final boolean returnTypeInferred;
 
-  ArrowType(JSTypeRegistry registry, Node parameters,
-      JSType returnType) {
+  ArrowType(JSTypeRegistry registry, Node parameters, JSType returnType) {
     this(registry, parameters, returnType, false);
   }
 
@@ -77,7 +76,13 @@ final class ArrowType extends JSType {
   }
 
   @Override
-  public boolean isSubtype(JSType other) {
+  public boolean isSubtype(JSType that) {
+    return isSubtype(that, ImplCache.create());
+  }
+
+  @Override
+  protected boolean isSubtype(JSType other,
+      ImplCache implicitImplCache) {
     if (!(other instanceof ArrowType)) {
       return false;
     }
@@ -88,7 +93,7 @@ final class ArrowType extends JSType {
     // Section 3.4.7: Subtyping Function Types.
 
     // this.returnType <: that.returnType (covariant)
-    if (!this.returnType.isSubtype(that.returnType)) {
+    if (!this.returnType.isSubtype(that.returnType, implicitImplCache)) {
       return false;
     }
 
@@ -118,7 +123,7 @@ final class ArrowType extends JSType {
       JSType thatParamType = thatParam.getJSType();
       if (thisParamType != null) {
         if (thatParamType == null ||
-            !thatParamType.isSubtype(thisParamType)) {
+            !thatParamType.isSubtype(thisParamType, implicitImplCache)) {
           return false;
         }
       }
@@ -161,13 +166,8 @@ final class ArrowType extends JSType {
     }
 
     // "that" can't be a supertype, because it's missing a required argument.
-    if (thisParam != null
-        && !thisParam.isOptionalArg() && !thisParam.isVarArgs()
-        && thatParam == null) {
-      return false;
-    }
-
-    return true;
+    return thisParam == null || thisParam.isOptionalArg() || thisParam.isVarArgs()
+        || thatParam != null;
   }
 
   /**
@@ -211,9 +211,10 @@ final class ArrowType extends JSType {
   }
 
   boolean checkArrowEquivalenceHelper(
-      ArrowType that, EquivalenceMethod eqMethod) {
+      ArrowType that, EquivalenceMethod eqMethod, EqCache eqCache) {
     // Please keep this method in sync with the hashCode() method below.
-    if (!returnType.checkEquivalenceHelper(that.returnType, eqMethod)) {
+    if (!returnType.checkEquivalenceHelper(
+        that.returnType, eqMethod, eqCache)) {
       return false;
     }
     return hasEqualParameters(that, eqMethod);
@@ -271,7 +272,7 @@ final class ArrowType extends JSType {
   }
 
   @Override
-  JSType resolveInternal(ErrorReporter t, StaticScope<JSType> scope) {
+  JSType resolveInternal(ErrorReporter t, StaticTypedScope<JSType> scope) {
     returnType = safeResolve(returnType, t, scope);
     if (parameters != null) {
       for (Node paramNode = parameters.getFirstChild();

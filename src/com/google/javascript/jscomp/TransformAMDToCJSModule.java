@@ -28,7 +28,7 @@ import java.util.Iterator;
  * CommonJS module. See {@link ProcessCommonJSModules} for follow up processing
  * step.
  */
-class TransformAMDToCJSModule implements CompilerPass {
+public final class TransformAMDToCJSModule implements CompilerPass {
 
   @VisibleForTesting
   static final DiagnosticType UNSUPPORTED_DEFINE_SIGNATURE_ERROR =
@@ -52,7 +52,7 @@ class TransformAMDToCJSModule implements CompilerPass {
   private final AbstractCompiler compiler;
   private int renameIndex = 0;
 
-  TransformAMDToCJSModule(AbstractCompiler compiler) {
+  public TransformAMDToCJSModule(AbstractCompiler compiler) {
     this.compiler = compiler;
   }
 
@@ -85,7 +85,7 @@ class TransformAMDToCJSModule implements CompilerPass {
       if (n.isCall() && n.getFirstChild() != null &&
           n.getFirstChild().isName() &&
           "define".equals(n.getFirstChild().getString())) {
-        Scope.Var define = t.getScope().getVar(n.getFirstChild().
+        Var define = t.getScope().getVar(n.getFirstChild().
             getString());
         if (define != null && !define.isGlobal()) {
           // Ignore non-global define.

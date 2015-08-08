@@ -111,7 +111,7 @@ final class RefasterJs {
     RefactoringDriver driver = new RefactoringDriver.Builder(scanner)
         .addExterns(includeDefaultExterns
             ? CommandLineRunner.getDefaultExterns() : ImmutableList.<SourceFile>of())
-        .addExternsFromFile(externs)
+        .addExternsFromFile(getExterns())
         .addInputsFromFile(fileInputs)
         .build();
     System.out.println("Compiling JavaScript code and searching for suggested fixes.");
@@ -143,11 +143,22 @@ final class RefasterJs {
     Set<String> patterns = new HashSet<>();
     // The args4j library can't handle multiple files provided within the same flag option,
     // like --inputs=file1.js,file2.js so handle that here.
-    Splitter commaSplitter = Splitter.on(",");
+    Splitter commaSplitter = Splitter.on(',');
     for (String input : inputs) {
       patterns.addAll(commaSplitter.splitToList(input));
     }
     patterns.addAll(arguments);
+    return CommandLineRunner.findJsFiles(patterns);
+  }
+
+  private List<String> getExterns() throws IOException {
+    Set<String> patterns = new HashSet<>();
+    // The args4j library can't handle multiple files provided within the same flag option,
+    // like --externs=file1.js,file2.js so handle that here.
+    Splitter commaSplitter = Splitter.on(',');
+    for (String extern : externs) {
+      patterns.addAll(commaSplitter.splitToList(extern));
+    }
     return CommandLineRunner.findJsFiles(patterns);
   }
 

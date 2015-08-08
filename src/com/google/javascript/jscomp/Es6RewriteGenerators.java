@@ -36,7 +36,7 @@ import java.util.Set;
  *
  * @author mattloring@google.com (Matthew Loring)
  */
-public class Es6RewriteGenerators extends NodeTraversal.AbstractPostOrderCallback
+public final class Es6RewriteGenerators extends NodeTraversal.AbstractPostOrderCallback
     implements HotSwapCompilerPass {
   private final AbstractCompiler compiler;
 
@@ -52,8 +52,6 @@ public class Es6RewriteGenerators extends NodeTraversal.AbstractPostOrderCallbac
 
   // The current statement being translated.
   private Node currentStatement;
-
-  private static final String ITER_KEY = "$$iterator";
 
   // The name of the variable that holds the state at which the generator
   // should resume execution after a call to yield or return.
@@ -231,6 +229,7 @@ public class Es6RewriteGenerators extends NodeTraversal.AbstractPostOrderCallbac
   }
 
   private void visitGenerator(Node n, Node parent) {
+    compiler.needsEs6Runtime = true;
     hasTranslatedTry = false;
     Node genBlock = compiler.parseSyntheticCode(Joiner.on('\n').join(
       "function generatorBody() {",
@@ -243,11 +242,13 @@ public class Es6RewriteGenerators extends NodeTraversal.AbstractPostOrderCallbac
       "        return {value: undefined, done: true};",
       "    }",
       "  }",
-      "  return {",
-      "    " + ITER_KEY + ": function() { return this; },",
+      "  var iterator = {",
       "    next: function(arg){ return $jscomp$generator$impl(arg, undefined); },",
       "    throw: function(arg){ return $jscomp$generator$impl(undefined, arg); },",
-      "  }",
+      "  };",
+      "  $jscomp.initSymbolIterator();",
+      "  iterator[Symbol.iterator] = function() {return this;};",
+      "  return iterator;",
       "}"
     )).getFirstChild().getLastChild().detachFromParent();
     generatorCaseCount++;
@@ -258,24 +259,18 @@ public class Es6RewriteGenerators extends NodeTraversal.AbstractPostOrderCallbac
 
     //TODO(mattloring): remove this suppression once we can optimize the switch statement to
     // remove unused cases.
-    JSDocInfoBuilder builder;
-    if (n.getJSDocInfo() == null) {
-      builder = new JSDocInfoBuilder(true);
-    } else {
-      builder = JSDocInfoBuilder.copyFrom(n.getJSDocInfo());
-    }
+    JSDocInfoBuilder builder = JSDocInfoBuilder.maybeCopyFrom(n.getJSDocInfo());
     //TODO(mattloring): copy existing suppressions.
     builder.recordSuppressions(ImmutableSet.of("uselessCode"));
-    JSDocInfo info = builder.build(n);
+    JSDocInfo info = builder.build();
     n.setJSDocInfo(info);
-
 
     // Set state to the default after the body of the function has completed.
     originalGeneratorBody.addChildToBack(
         IR.exprResult(IR.assign(IR.name(GENERATOR_STATE), IR.number(-1))));
 
     enclosingBlock = getUnique(genBlock, Token.CASE).getLastChild();
-    hoistRoot = getUnique(genBlock, Token.VAR);
+    hoistRoot = genBlock.getFirstChild();
 
     if (NodeUtil.isNameReferenced(originalGeneratorBody, GENERATOR_ARGUMENTS)) {
       hoistRoot.getParent().addChildAfter(
@@ -293,7 +288,7 @@ public class Es6RewriteGenerators extends NodeTraversal.AbstractPostOrderCallbac
       if (advanceCase) {
         int caseNumber;
         if (currentStatement.isGeneratorMarker()) {
-          caseNumber = (int) currentStatement.getDouble();
+          caseNumber = (int) currentStatement.getFirstChild().getDouble();
         } else {
           caseNumber = generatorCaseCount;
           generatorCaseCount++;
@@ -412,8 +407,7 @@ public class Es6RewriteGenerators extends NodeTraversal.AbstractPostOrderCallbac
     }
     Node finallyBody = catchBlock.getNext();
     int catchStartState = generatorCaseCount++;
-    Node catchStart = IR.number(catchStartState);
-    catchStart.setGeneratorMarker(true);
+    Node catchStart = makeGeneratorMarker(catchStartState);
 
     Node errorNameGenerated = IR.name("$jscomp$generator$" + caughtError.getString());
 
@@ -430,11 +424,9 @@ public class Es6RewriteGenerators extends NodeTraversal.AbstractPostOrderCallbac
     if (finallyBody != null) {
       Node finallyName = IR.name(GENERATOR_FINALLY_JUMP + generatorCounter.get());
       int finallyStartState = generatorCaseCount++;
-      Node finallyStart = IR.number(finallyStartState);
-      finallyStart.setGeneratorMarker(true);
+      Node finallyStart = makeGeneratorMarker(finallyStartState);
       int finallyEndState = generatorCaseCount++;
-      Node finallyEnd = IR.number(finallyEndState);
-      finallyEnd.setGeneratorMarker(true);
+      Node finallyEnd = makeGeneratorMarker(finallyEndState);
 
       NodeTraversal.traverse(compiler,
           tryBody,
@@ -459,8 +451,7 @@ public class Es6RewriteGenerators extends NodeTraversal.AbstractPostOrderCallbac
           IR.assign(finallyName.cloneTree(), IR.number(finallyEndState))));
     } else {
       int catchEndState = generatorCaseCount++;
-      Node catchEnd = IR.number(catchEndState);
-      catchEnd.setGeneratorMarker(true);
+      Node catchEnd = makeGeneratorMarker(catchEndState);
       originalGeneratorBody.addChildAfter(catchEnd, catchBody);
       tryBody.addChildToBack(createStateUpdate(catchEndState));
       tryBody.addChildToBack(createSafeBreak());
@@ -536,11 +527,12 @@ public class Es6RewriteGenerators extends NodeTraversal.AbstractPostOrderCallbac
    */
   private void visitGeneratorMarker() {
     if (!currentLoopContext.isEmpty()
-        && currentLoopContext.get(0).breakCase == currentStatement.getDouble()) {
+        && currentLoopContext.get(0).breakCase == currentStatement.getFirstChild().getDouble()) {
       currentLoopContext.remove(0);
     }
     if (!currentExceptionContext.isEmpty()
-        && currentExceptionContext.get(0).catchStartCase == currentStatement.getDouble()) {
+        && currentExceptionContext.get(0).catchStartCase
+            == currentStatement.getFirstChild().getDouble()) {
       currentExceptionContext.remove(0);
     }
   }
@@ -560,8 +552,7 @@ public class Es6RewriteGenerators extends NodeTraversal.AbstractPostOrderCallbac
     Node invertedConditional = IR.ifNode(IR.not(condition),
         IR.block(createStateUpdate(ifEndState), createSafeBreak()));
     invertedConditional.setGeneratorSafe(true);
-    Node endIf = IR.number(ifEndState);
-    endIf.setGeneratorMarker(true);
+    Node endIf = makeGeneratorMarker(ifEndState);
 
     originalGeneratorBody.addChildToFront(invertedConditional);
     originalGeneratorBody.addChildAfter(ifBody, invertedConditional);
@@ -572,8 +563,7 @@ public class Es6RewriteGenerators extends NodeTraversal.AbstractPostOrderCallbac
 
       int elseEndState = generatorCaseCount++;
 
-      Node endElse = IR.number(elseEndState);
-      endElse.setGeneratorMarker(true);
+      Node endElse = makeGeneratorMarker(elseEndState);
 
       ifBody.addChildToBack(createStateUpdate(elseEndState));
       ifBody.addChildToBack(createSafeBreak());
@@ -643,8 +633,7 @@ public class Es6RewriteGenerators extends NodeTraversal.AbstractPostOrderCallbac
     int breakTarget = generatorCaseCount++;
     int cont = currentLoopContext.isEmpty() ? -1 : currentLoopContext.get(0).continueCase;
     currentLoopContext.add(0, new LoopContext(breakTarget, cont, null));
-    Node breakCase = IR.number(breakTarget);
-    breakCase.setGeneratorMarker(true);
+    Node breakCase = makeGeneratorMarker(breakTarget);
     originalGeneratorBody.addChildAfter(breakCase, insertionPoint);
   }
 
@@ -798,16 +787,14 @@ public class Es6RewriteGenerators extends NodeTraversal.AbstractPostOrderCallbac
 
     if (!incr.isEmpty()) {
       continueState = generatorCaseCount++;
-      Node continueCase = IR.number(continueState);
-      continueCase.setGeneratorMarker(true);
+      Node continueCase = makeGeneratorMarker(continueState);
       body.addChildToBack(continueCase);
       body.addChildToBack(incr.isBlock() ? incr : IR.exprResult(incr));
     }
 
     currentLoopContext.add(0, new LoopContext(generatorCaseCount, continueState, label));
 
-    Node beginCase = IR.number(loopBeginState);
-    beginCase.setGeneratorMarker(true);
+    Node beginCase = makeGeneratorMarker(loopBeginState);
     Node conditionalBranch = IR.ifNode(condition.isEmpty() ? IR.trueNode() : condition, body);
     Node setStateLoopStart = createStateUpdate(loopBeginState);
     Node breakToStart = createSafeBreak();
@@ -892,8 +879,7 @@ public class Es6RewriteGenerators extends NodeTraversal.AbstractPostOrderCallbac
     Node setReturnState =  IR.exprResult(
         IR.assign(finallyName.cloneTree(), IR.number(jumpPoint)));
     Node toFinally = createStateUpdate(finallyStartState);
-    Node returnPoint = IR.number(jumpPoint);
-    returnPoint.setGeneratorMarker(true);
+    Node returnPoint = makeGeneratorMarker(jumpPoint);
     Node returnBlock = IR.block(setReturnState, toFinally, createSafeBreak());
     returnBlock.addChildToBack(returnPoint);
     return returnBlock;
@@ -920,7 +906,7 @@ public class Es6RewriteGenerators extends NodeTraversal.AbstractPostOrderCallbac
   private Node getUnique(Node node, int type) {
     List<Node> matches = new ArrayList<>();
     insertAll(node, type, matches);
-    Preconditions.checkState(matches.size() == 1);
+    Preconditions.checkState(matches.size() == 1, matches);
     return matches.get(0);
   }
 
@@ -955,7 +941,7 @@ public class Es6RewriteGenerators extends NodeTraversal.AbstractPostOrderCallbac
    *  return temp$$0
    * </pre>
    *
-   * This uses the {@link #ExpressionDecomposer} class
+   * This uses the {@link ExpressionDecomposer} class
    */
   class DecomposeYields extends NodeTraversal.AbstractPreOrderCallback {
 
@@ -984,7 +970,7 @@ public class Es6RewriteGenerators extends NodeTraversal.AbstractPostOrderCallbac
           break;
         case Token.CASE:
           if (controlCanExit(n.getFirstChild())) {
-            compiler.report(JSError.make(currentStatement, Es6ToEs3Converter.CANNOT_CONVERT_YET,
+            compiler.report(JSError.make(n, Es6ToEs3Converter.CANNOT_CONVERT_YET,
               "Case statements that contain yields"));
             return false;
           }
@@ -1002,7 +988,7 @@ public class Es6RewriteGenerators extends NodeTraversal.AbstractPostOrderCallbac
         decomposer.exposeExpression(n);
         compiler.reportCodeChange();
       } else {
-        compiler.report(JSError.make(currentStatement, Es6ToEs3Converter.CANNOT_CONVERT,
+        compiler.report(JSError.make(n, Es6ToEs3Converter.CANNOT_CONVERT,
           "Undecomposable expression"));
       }
     }
@@ -1052,6 +1038,12 @@ public class Es6RewriteGenerators extends NodeTraversal.AbstractPostOrderCallbac
       enclosingBlock.addChildToFront(IR.var(guardName));
       compiler.reportCodeChange();
     }
+  }
+
+  private static Node makeGeneratorMarker(int i) {
+    Node n = IR.exprResult(IR.number(i));
+    n.setGeneratorMarker(true);
+    return n;
   }
 
   class ControlExitsCheck implements NodeTraversal.Callback {

@@ -29,7 +29,7 @@ import com.google.javascript.rhino.Node;
  * @author blickly@google.com (Ben Lickly)
  * @author dimvar@google.com (Dimitris Vardoulakis)
  */
-public class QualifiedName {
+public final class QualifiedName {
   ImmutableList<String> parts;
 
   private QualifiedName(ImmutableList<String> parts) {
@@ -55,7 +55,7 @@ public class QualifiedName {
               Splitter.on('.').split(qnameNode.getQualifiedName())));
   }
 
-  public static QualifiedName fromQname(String qname) {
+  public static QualifiedName fromQualifiedString(String qname) {
     return qname.contains(".") ?
         new QualifiedName(ImmutableList.copyOf(Splitter.on('.').split(qname))) :
         new QualifiedName(qname);

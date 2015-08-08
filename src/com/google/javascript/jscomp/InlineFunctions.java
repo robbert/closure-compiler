@@ -17,7 +17,6 @@ package com.google.javascript.jscomp;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Supplier;
-import com.google.common.collect.Sets;
 import com.google.javascript.jscomp.FunctionInjector.CanInlineResult;
 import com.google.javascript.jscomp.FunctionInjector.InliningMode;
 import com.google.javascript.jscomp.NodeTraversal.AbstractPostOrderCallback;
@@ -28,6 +27,7 @@ import com.google.javascript.rhino.Token;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -52,7 +52,7 @@ import java.util.Set;
  *
  * @author johnlenz@google.com (John Lenz)
  */
-class InlineFunctions implements SpecializationAwareCompilerPass {
+class InlineFunctions implements CompilerPass {
 
   // TODO(nicksantos): This needs to be completely rewritten to use scopes
   // to do variable lookups. Right now, it assumes that all functions are
@@ -70,8 +70,6 @@ class InlineFunctions implements SpecializationAwareCompilerPass {
   private final boolean inlineGlobalFunctions;
   private final boolean inlineLocalFunctions;
   private final boolean assumeMinimumCapture;
-
-  private SpecializeModule.SpecializationState specializationState;
 
   private final boolean enforceMaxSizeAfterInlining;
   private final int maxSizeAfterInlining;
@@ -94,12 +92,11 @@ class InlineFunctions implements SpecializationAwareCompilerPass {
     this.assumeMinimumCapture = assumeMinimumCapture;
 
     this.maxSizeAfterInlining = maxSizeAfterInlining;
-    this.enforceMaxSizeAfterInlining = (maxSizeAfterInlining
-        == CompilerOptions.UNLIMITED_FUN_SIZE_AFTER_INLINING) ? false : true;
+    this.enforceMaxSizeAfterInlining =
+        maxSizeAfterInlining != CompilerOptions.UNLIMITED_FUN_SIZE_AFTER_INLINING;
 
     this.injector = new FunctionInjector(
-        compiler, safeNameIdSupplier,
-        true, assumeStrictThis, assumeMinimumCapture);
+        compiler, safeNameIdSupplier, true, assumeStrictThis, assumeMinimumCapture);
   }
 
   FunctionState getOrCreateFunctionState(String fnName) {
@@ -109,12 +106,6 @@ class InlineFunctions implements SpecializationAwareCompilerPass {
       fns.put(fnName, fs);
     }
     return fs;
-  }
-
-  @Override
-  public void enableSpecialization(SpecializeModule.SpecializationState
-      specializationState) {
-    this.specializationState = specializationState;
   }
 
   @Override
@@ -140,7 +131,7 @@ class InlineFunctions implements SpecializationAwareCompilerPass {
     // This pass already assumes these are constants, so this is safe for anyone
     // using function inlining.
     //
-    Set<String> fnNames = Sets.newHashSet(fns.keySet());
+    Set<String> fnNames = new HashSet<>(fns.keySet());
     injector.setKnownConstants(fnNames);
 
     trimCandidatesUsingOnCost();
@@ -150,8 +141,7 @@ class InlineFunctions implements SpecializationAwareCompilerPass {
     resolveInlineConflicts();
     decomposeExpressions();
     NodeTraversal.traverse(compiler, root,
-        new CallVisitor(
-            fns, anonFns, new Inline(injector, specializationState)));
+        new CallVisitor(fns, anonFns, new Inline(injector)));
 
     removeInlinedFunctions();
   }
@@ -341,10 +331,8 @@ class InlineFunctions implements SpecializationAwareCompilerPass {
       }
 
       // Check if block inlining is allowed.
-      if (fs.canInline() && !fs.canInlineDirectly()) {
-        if (!blockFunctionInliningEnabled) {
-          fs.setInline(false);
-        }
+      if (fs.canInline() && !fs.canInlineDirectly() && !blockFunctionInliningEnabled) {
+        fs.setInline(false);
       }
     }
   }
@@ -389,12 +377,6 @@ class InlineFunctions implements SpecializationAwareCompilerPass {
 
     // Don't inline this special function
     if (RenameProperties.RENAME_PROPERTY_FUNCTION_NAME.equals(fnName)) {
-      return false;
-    }
-
-    // Don't inline if we are specializing and the function can't be fixed up
-    if (specializationState != null &&
-        !specializationState.canFixupFunction(fn.getFunctionNode())) {
       return false;
     }
 
@@ -493,9 +475,9 @@ class InlineFunctions implements SpecializationAwareCompilerPass {
          && name == parent.getFirstChild()
          && name.getNext().isString()
          && name.getNext().getString().equals("call")) {
-      Node gramps = name.getAncestor(2);
-      if (gramps.isCall()
-          && gramps.getFirstChild() == parent) {
+      Node grandparent = name.getAncestor(2);
+      if (grandparent.isCall()
+          && grandparent.getFirstChild() == parent) {
         // Yep, a ".call".
         return true;
       }
@@ -536,11 +518,9 @@ class InlineFunctions implements SpecializationAwareCompilerPass {
         return;
       }
 
-      boolean referenceAdded = false;
       InliningMode mode = fs.canInlineDirectly()
            ? InliningMode.DIRECT : InliningMode.BLOCK;
-      referenceAdded = maybeAddReferenceUsingMode(
-          t, fs, callNode, module, mode);
+      boolean referenceAdded = maybeAddReferenceUsingMode(t, fs, callNode, module, mode);
       if (!referenceAdded &&
           mode == InliningMode.DIRECT && blockFunctionInliningEnabled) {
         // This reference can not be directly inlined, see if
@@ -561,14 +541,15 @@ class InlineFunctions implements SpecializationAwareCompilerPass {
         NodeTraversal t, FunctionState fs, Node callNode,
         JSModule module, InliningMode mode) {
 
-      if (specializationState != null) {
-        // If we're specializing, make sure we can fixup
-        // the containing function before inlining
-        Node containingFunction = getContainingFunction(t);
-        if (containingFunction != null && !specializationState.canFixupFunction(
-            containingFunction)) {
-            return false;
-        }
+      // If many functions are inlined into the same function F in the same
+      // inlining round, then the size of F may exceed the max size.
+      // This could be avoided if we bail later, during the inlining phase, eg,
+      // in Inline#visitCallSite. However, that is not safe, because at that
+      // point expression decomposition has already run, and we want to
+      // decompose expressions only for the calls that are actually inlined.
+      if (enforceMaxSizeAfterInlining
+          && targetSizeAfterInlineExceedsLimit(t, fs)) {
+        return false;
       }
 
       Reference candidate = new Reference(callNode, t.getScope(), module, mode);
@@ -637,12 +618,9 @@ class InlineFunctions implements SpecializationAwareCompilerPass {
    */
   private class Inline implements CallVisitorCallback {
     private final FunctionInjector injector;
-    private final SpecializeModule.SpecializationState specializationState;
 
-    Inline(FunctionInjector injector,
-        SpecializeModule.SpecializationState specializationState) {
+    Inline(FunctionInjector injector) {
       this.injector = injector;
-      this.specializationState = specializationState;
     }
 
     @Override
@@ -657,27 +635,6 @@ class InlineFunctions implements SpecializationAwareCompilerPass {
         // or if the call site was trimmed from the list of references because
         // the function couldn't be inlined at this location.
         if (ref != null) {
-          if (specializationState != null) {
-            Node containingFunction = getContainingFunction(t);
-            if (containingFunction != null) {
-              // Report that the function was specialized so that
-              // {@link SpecializeModule} can fix it up.
-              specializationState.reportSpecializedFunction(containingFunction);
-            }
-          }
-
-          // Check that after inlining, we won't create a huge function.
-          // This check also makes sense in
-          // FindCandidatesReferences#maybeAddReferenceUsingMode.
-          // However, if many functions are marked for inlining in the same
-          // round, the size of the target function can grow; so we put the
-          // check here to detect that.
-          if (enforceMaxSizeAfterInlining
-              && targetSizeAfterInlineExceedsLimit(t, fs)) {
-            fs.setRemove(false);
-            return;
-          }
-
           inlineFunction(t, ref, fs);
           // Keep track of references that have been inlined so that
           // we can verify that none have been missed.
@@ -831,7 +788,7 @@ class InlineFunctions implements SpecializationAwareCompilerPass {
    * This functions that may be called directly.
    */
   private Set<String> findCalledFunctions(Node node) {
-    Set<String> changed = Sets.newHashSet();
+    Set<String> changed = new HashSet<>();
     findCalledFunctions(NodeUtil.getFunctionBody(node), changed);
     return changed;
   }
@@ -843,10 +800,8 @@ class InlineFunctions implements SpecializationAwareCompilerPass {
       Node node, Set<String> changed) {
     Preconditions.checkArgument(changed != null);
     // For each referenced function, add a new reference
-    if (node.isName()) {
-      if (isCandidateUsage(node)) {
-        changed.add(node.getString());
-      }
+    if (node.isName() && isCandidateUsage(node)) {
+      changed.add(node.getString());
     }
 
     for (Node c = node.getFirstChild(); c != null; c = c.getNext()) {
@@ -880,12 +835,6 @@ class InlineFunctions implements SpecializationAwareCompilerPass {
         Preconditions.checkState(fs.canInline());
         Preconditions.checkState(fn != null);
         verifyAllReferencesInlined(fs);
-
-        if (specializationState != null) {
-          specializationState.reportRemovedFunction(
-              fn.getFunctionNode(), fn.getDeclaringBlock());
-        }
-
         fn.remove();
       }
     }
@@ -983,7 +932,7 @@ class InlineFunctions implements SpecializationAwareCompilerPass {
 
     public void setInline(boolean inline) {
       this.inline = inline;
-      if (inline == false) {
+      if (!inline) {
         // No need to keep references to function that can't be inlined.
         references = null;
         // Don't remove functions that we aren't inlining.

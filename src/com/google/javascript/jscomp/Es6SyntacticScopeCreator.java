@@ -17,6 +17,8 @@
 package com.google.javascript.jscomp;
 
 import com.google.common.base.Preconditions;
+import com.google.javascript.jscomp.SyntacticScopeCreator.DefaultRedeclarationHandler;
+import com.google.javascript.jscomp.SyntacticScopeCreator.RedeclarationHandler;
 import com.google.javascript.rhino.InputId;
 import com.google.javascript.rhino.Node;
 import com.google.javascript.rhino.Token;
@@ -194,6 +196,8 @@ class Es6SyntacticScopeCreator implements ScopeCreator {
         if (isNodeAtCurrentLexicalScope(n)) {
           declareLHS(scope, exception);
         }
+        // A new scope is not created for this BLOCK because there is a scope
+        // created for the BLOCK above the CATCH
         scanVars(block);
         return;  // only one child to scan
 
@@ -213,23 +217,6 @@ class Es6SyntacticScopeCreator implements ScopeCreator {
         child = next;
       }
     }
-  }
-
-  /**
-   * Interface for injectable duplicate handling.
-   */
-  interface RedeclarationHandler {
-    void onRedeclaration(
-        Scope s, String name, Node n, CompilerInput input);
-  }
-
-  /**
-   * The default handler for duplicate declarations.
-   */
-  private static class DefaultRedeclarationHandler implements RedeclarationHandler {
-    @Override
-    public void onRedeclaration(
-        Scope s, String name, Node n, CompilerInput input) {}
   }
 
   private void declareVar(Node n) {
@@ -257,7 +244,7 @@ class Es6SyntacticScopeCreator implements ScopeCreator {
     if (s.isDeclared(name, false) || (s.isLocal() && name.equals(ARGUMENTS))) {
       redeclarationHandler.onRedeclaration(s, name, n, input);
     } else {
-      s.declare(name, n, null, input);
+      s.declare(name, n, input);
     }
   }
 

@@ -20,7 +20,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
-import com.google.javascript.jscomp.newtypes.NominalType.RawNominalType;
 
 /**
  * This class contains commonly used types, accessible from the jscomp package.
@@ -35,7 +34,7 @@ import com.google.javascript.jscomp.newtypes.NominalType.RawNominalType;
  * @author blickly@google.com (Ben Lickly)
  * @author dimvar@google.com (Dimitris Vardoulakis)
  */
-public class JSTypes {
+public final class JSTypes {
   // Instances of Boolean, Number and String; used for auto-boxing scalars.
   // Set when they are crawled in GlobalTypeInfo.
   private JSType numberInstance;
@@ -50,10 +49,11 @@ public class JSTypes {
   private JSType stringOrString;
   private JSType anyNumOrStr;
 
-  private JSType regexpType;
+  private JSType regexpInstance;
   private RawNominalType arrayType;
   private RawNominalType builtinObject;
   private RawNominalType builtinFunction;
+  private RawNominalType arguments;
 
   private JSTypes() {}
 
@@ -81,7 +81,7 @@ public class JSTypes {
   }
 
   // Corresponds to Function, which is a subtype and supertype of all functions.
-  JSType qmarkFunction() {
+  public JSType qmarkFunction() {
     return fromFunctionType(FunctionType.QMARK_FUNCTION);
   }
 
@@ -110,7 +110,7 @@ public class JSTypes {
   }
 
   public JSType getRegexpType() {
-    return regexpType != null ? regexpType : JSType.UNKNOWN;
+    return regexpInstance != null ? regexpInstance : JSType.UNKNOWN;
   }
 
   JSType getNumberInstance() {
@@ -140,20 +140,29 @@ public class JSTypes {
         ? stringInstanceObjtype : ObjectType.TOP_OBJECT;
   }
 
+  public JSType getArgumentsArrayType() {
+    return this.arguments.getInstanceAsJSType();
+  }
+
+  public void setArgumentsType(RawNominalType arguments) {
+    this.arguments = arguments;
+  }
+
   public void setFunctionType(RawNominalType builtinFunction) {
     this.builtinFunction = builtinFunction;
   }
 
   public void setObjectType(RawNominalType builtinObject) {
     this.builtinObject = builtinObject;
+    ObjectType.setObjectType(builtinObject.getAsNominalType());
   }
 
   public void setArrayType(RawNominalType arrayType) {
     this.arrayType = arrayType;
   }
 
-  public void setRegexpInstance(JSType regexpType) {
-    this.regexpType = regexpType;
+  public void setRegexpInstance(JSType regexpInstance) {
+    this.regexpInstance = regexpInstance;
   }
 
   public void setNumberInstance(JSType t) {

@@ -19,7 +19,6 @@ package com.google.javascript.jscomp.ant;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.google.common.base.Strings;
-import com.google.common.collect.Lists;
 import com.google.common.io.Files;
 import com.google.javascript.jscomp.CheckLevel;
 import com.google.javascript.jscomp.CommandLineRunner;
@@ -56,6 +55,7 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -80,9 +80,11 @@ public final class CompileTask
   private boolean manageDependencies;
   private boolean prettyPrint;
   private boolean printInputDelimiter;
+  private boolean preferSingleQuotes;
   private boolean generateExports;
   private boolean replaceProperties;
   private boolean forceRecompile;
+  private boolean angularPass;
   private String replacePropertiesPrefix;
   private File outputFile;
   private String outputWrapper;
@@ -106,16 +108,18 @@ public final class CompileTask
     this.manageDependencies = false;
     this.prettyPrint = false;
     this.printInputDelimiter = false;
+    this.preferSingleQuotes = false;
     this.generateExports = false;
     this.replaceProperties = false;
     this.forceRecompile = false;
+    this.angularPass = false;
     this.replacePropertiesPrefix = "closure.define.";
-    this.defineParams = Lists.newLinkedList();
-    this.entryPointParams = Lists.newLinkedList();
-    this.externFileLists = Lists.newLinkedList();
-    this.sourceFileLists = Lists.newLinkedList();
-    this.sourcePaths = Lists.newLinkedList();
-    this.warnings = Lists.newLinkedList();
+    this.defineParams = new LinkedList();
+    this.entryPointParams = new LinkedList();
+    this.externFileLists = new LinkedList();
+    this.sourceFileLists = new LinkedList();
+    this.sourcePaths = new LinkedList();
+    this.warnings = new LinkedList();
   }
 
   /**
@@ -269,10 +273,23 @@ public final class CompileTask
   }
 
   /**
+   * Normally, when there are an equal number of single and double quotes
+   * in a string, the compiler will use double quotes. Set this to true
+   * to prefer single quotes.
+   */
+  public void setPreferSingleQuotes(boolean singlequotes) {
+    this.preferSingleQuotes = singlequotes;
+  }
+
+  /**
    * Set force recompile option
    */
   public void setForceRecompile(boolean forceRecompile) {
     this.forceRecompile = forceRecompile;
+  }
+
+  public void setAngularPass(boolean angularPass) {
+    this.angularPass = angularPass;
   }
 
   /**
@@ -375,7 +392,7 @@ public final class CompileTask
         if (result.sourceMap != null) {
           flushSourceMap(result.sourceMap);
           source.append(System.getProperty("line.separator"));
-          source.append("//@ sourceMappingURL=" + sourceMapOutputFile.getName());
+          source.append("//# sourceMappingURL=" + sourceMapOutputFile.getName());
         }
         writeResult(source.toString());
       } else {
@@ -404,9 +421,10 @@ public final class CompileTask
       this.compilationLevel.setDebugOptionsForCompilationLevel(options);
     }
 
-    options.prettyPrint = this.prettyPrint;
-    options.printInputDelimiter = this.printInputDelimiter;
-    options.generateExports = this.generateExports;
+    options.setPrettyPrint(this.prettyPrint);
+    options.setPrintInputDelimiter(this.printInputDelimiter);
+    options.setPreferSingleQuotes(this.preferSingleQuotes);
+    options.setGenerateExports(this.generateExports);
 
     options.setLanguageIn(this.languageIn);
     options.setOutputCharset(this.outputEncoding);
@@ -415,6 +433,7 @@ public final class CompileTask
     options.setManageClosureDependencies(manageDependencies);
     convertEntryPointParameters(options);
     options.setTrustedStrings(true);
+    options.setAngularPass(angularPass);
 
     if (replaceProperties) {
       convertPropertiesMap(options);
@@ -434,13 +453,13 @@ public final class CompileTask
     }
 
     if (!Strings.isNullOrEmpty(sourceMapFormat)) {
-      options.sourceMapFormat = Format.valueOf(sourceMapFormat);
+      options.setSourceMapFormat(Format.valueOf(sourceMapFormat));
     }
 
     if (!Strings.isNullOrEmpty(sourceMapLocationMapping)) {
       String tokens[] = sourceMapLocationMapping.split("\\|", -1);
       LocationMapping lm = new LocationMapping(tokens[0], tokens[1]);
-      options.sourceMapLocationMappings = Arrays.asList(lm);
+      options.setSourceMapLocationMappings(Arrays.asList(lm));
     }
 
     if (sourceMapOutputFile != null) {
@@ -448,7 +467,7 @@ public final class CompileTask
       if (parentFile.mkdirs()) {
         log("Created missing parent directory " + parentFile, Project.MSG_DEBUG);
       }
-      options.sourceMapOutputPath = parentFile.getAbsolutePath();
+      options.setSourceMapOutputPath(parentFile.getAbsolutePath());
     }
     return options;
   }
@@ -494,7 +513,7 @@ public final class CompileTask
    * replacements.
    */
   private void convertEntryPointParameters(CompilerOptions options) {
-    List<String> entryPoints = Lists.newLinkedList();
+    List<String> entryPoints = new LinkedList();
     for (Parameter p : entryPointParams) {
       String key = p.getName();
       entryPoints.add(key);
@@ -572,14 +591,14 @@ public final class CompileTask
   private Compiler createCompiler(CompilerOptions options) {
     Compiler compiler = new Compiler();
     MessageFormatter formatter =
-        options.errorFormat.toFormatter(compiler, false);
+        options.getErrorFormat().toFormatter(compiler, false);
     AntErrorManager errorManager = new AntErrorManager(formatter, this);
     compiler.setErrorManager(errorManager);
     return compiler;
   }
 
   private List<SourceFile> findExternFiles() {
-    List<SourceFile> files = Lists.newLinkedList();
+    List<SourceFile> files = new LinkedList();
     if (!this.customExternsOnly) {
       files.addAll(getDefaultExterns());
     }
@@ -592,7 +611,7 @@ public final class CompileTask
   }
 
   private List<SourceFile> findSourceFiles() {
-    List<SourceFile> files = Lists.newLinkedList();
+    List<SourceFile> files = new LinkedList();
 
     for (FileList list : this.sourceFileLists) {
       files.addAll(findJavaScriptFiles(list));
@@ -610,10 +629,10 @@ public final class CompileTask
    * the compiler expects.
    */
   private List<SourceFile> findJavaScriptFiles(ResourceCollection rc) {
-    List<SourceFile> files = Lists.newLinkedList();
+    List<SourceFile> files = new LinkedList();
     Iterator<Resource> iter = rc.iterator();
     while (iter.hasNext()) {
-      FileResource fr = (FileResource) iter.next().as(FileResource.class);
+      FileResource fr = (FileResource) iter.next();
       // Construct path to file, relative to current working directory.
       File file = Paths.get("")
           .toAbsolutePath()

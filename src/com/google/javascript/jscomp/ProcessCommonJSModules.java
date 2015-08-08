@@ -17,16 +17,15 @@ package com.google.javascript.jscomp;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
 import com.google.javascript.jscomp.NodeTraversal.AbstractPostOrderCallback;
 import com.google.javascript.jscomp.NodeTraversal.AbstractPreOrderCallback;
-import com.google.javascript.jscomp.Scope.Var;
 import com.google.javascript.rhino.IR;
 import com.google.javascript.rhino.JSDocInfo;
 import com.google.javascript.rhino.Node;
 
+import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
 
 /**
  * Rewrites a CommonJS module http://wiki.commonjs.org/wiki/Modules/1.1.1
@@ -37,24 +36,38 @@ import java.util.regex.Pattern;
  * goog.provide and goog.require are emitted for closure compiler automatic
  * ordering.
  */
-public class ProcessCommonJSModules implements CompilerPass {
-  public static final String DEFAULT_FILENAME_PREFIX =
-      "." + ES6ModuleLoader.MODULE_SLASH;
-
-  private static final String MODULE_NAME_SEPARATOR = "\\$";
-  private static final String MODULE_NAME_PREFIX = "module$";
-
+public final class ProcessCommonJSModules implements CompilerPass {
   private static final String EXPORTS = "exports";
+  private static final String MODULE = "module";
 
   private final Compiler compiler;
   private final ES6ModuleLoader loader;
   private final boolean reportDependencies;
 
-  ProcessCommonJSModules(Compiler compiler, ES6ModuleLoader loader) {
+  /**
+   * Creates a new ProcessCommonJSModules instance which can be used to
+   * rewrite CommonJS modules to a concatenable form.
+   *
+   * @param compiler The compiler
+   * @param loader The module loader which is used to locate CommonJS modules
+   */
+  public ProcessCommonJSModules(Compiler compiler, ES6ModuleLoader loader) {
     this(compiler, loader, true);
   }
 
-  ProcessCommonJSModules(Compiler compiler, ES6ModuleLoader loader,
+  /**
+   * Creates a new ProcessCommonJSModules instance which can be used to
+   * rewrite CommonJS modules to a concatenable form.
+   *
+   * @param compiler The compiler
+   * @param loader The module loader which is used to locate CommonJS modules
+   * @param reportDependencies Whether the rewriter should report dependency
+   *     information to the Closure dependency manager. This needs to be true
+   *     if we want to sort CommonJS module inputs correctly. Note that goog.provide
+   *     and goog.require calls will still be generated if this argument is
+   *     false.
+   */
+  public ProcessCommonJSModules(Compiler compiler, ES6ModuleLoader loader,
       boolean reportDependencies) {
     this.compiler = compiler;
     this.loader = loader;
@@ -73,23 +86,7 @@ public class ProcessCommonJSModules implements CompilerPass {
   }
 
   String inputToModuleName(CompilerInput input) {
-    return toModuleName(loader.getLoadAddress(input));
-  }
-
-  /**
-   * Turns a filename into a JS identifier that is used for moduleNames in
-   * rewritten code. Removes leading ./, replaces / with $, removes trailing .js
-   * and replaces - with _. All moduleNames get a "module$" prefix.
-   */
-  public static String toModuleName(String filename) {
-    return MODULE_NAME_PREFIX +
-        filename.replaceAll("^\\." + Pattern.quote(ES6ModuleLoader.MODULE_SLASH), "")
-            .replaceAll(Pattern.quote(ES6ModuleLoader.MODULE_SLASH), MODULE_NAME_SEPARATOR)
-            .replaceAll(Pattern.quote("\\"), MODULE_NAME_SEPARATOR)
-            .replaceAll("\\.js$", "")
-            .replaceAll("-", "_")
-            .replaceAll(":", "_")
-            .replaceAll("\\.", "");
+    return ES6ModuleLoader.toModuleName(loader.normalizeInputAddress(input));
   }
 
   /**
@@ -132,8 +129,8 @@ public class ProcessCommonJSModules implements CompilerPass {
       AbstractPostOrderCallback {
 
     private int scriptNodeCount = 0;
-    private List<Node> moduleExportRefs = Lists.newArrayList();
-    private List<Node> exportRefs = Lists.newArrayList();
+    private List<Node> moduleExportRefs = new ArrayList<>();
+    private List<Node> exportRefs = new ArrayList<>();
 
     @Override
     public void visit(NodeTraversal t, Node n, Node parent) {
@@ -150,7 +147,13 @@ public class ProcessCommonJSModules implements CompilerPass {
 
       if (n.isGetProp() &&
           "module.exports".equals(n.getQualifiedName())) {
-        moduleExportRefs.add(n);
+        Var v = t.getScope().getVar(MODULE);
+        // only rewrite "module.exports" if "module" is a free variable,
+        // meaning it is not defined in the current scope as a local
+        // variable or function parameter
+        if (v == null) {
+          moduleExportRefs.add(n);
+        }
       }
 
       if (n.isName() && EXPORTS.equals(n.getString())) {
@@ -167,14 +170,13 @@ public class ProcessCommonJSModules implements CompilerPass {
      */
     private void visitRequireCall(NodeTraversal t, Node require, Node parent) {
       String requireName = require.getChildAtIndex(1).getString();
-      String loadAddress = loader.locate(requireName, t.getInput());
-      try {
-        loader.load(loadAddress);
-      } catch (ES6ModuleLoader.LoadFailedException e) {
-        t.makeError(require, ES6ModuleLoader.LOAD_ERROR, requireName);
+      URI loadAddress = loader.locateCommonJsModule(requireName, t.getInput());
+      if (loadAddress == null) {
+        compiler.report(t.makeError(require, ES6ModuleLoader.LOAD_ERROR, requireName));
+        return;
       }
 
-      String moduleName = toModuleName(loadAddress);
+      String moduleName = ES6ModuleLoader.toModuleName(loadAddress);
       Node moduleRef = IR.name(moduleName).srcref(require);
       parent.replaceChild(require, moduleRef);
       Node script = getCurrentScriptNode(parent);
@@ -257,7 +259,7 @@ public class ProcessCommonJSModules implements CompilerPass {
         // it's an alias, and if it is, copy the annotation over.
         // This is a common idiom to export a set of constructors.
         if (rhsValue.isObjectLit()) {
-          Scope globalScope = new SyntacticScopeCreator(compiler)
+          Scope globalScope = SyntacticScopeCreator.makeUntyped(compiler)
               .createScope(script, null);
           for (Node key = rhsValue.getFirstChild();
                key != null; key = key.getNext()) {
@@ -411,7 +413,7 @@ public class ProcessCommonJSModules implements CompilerPass {
           return;
         }
 
-        Scope.Var var = t.getScope().getVar(name);
+        Var var = t.getScope().getVar(name);
         if (var != null && var.isGlobal()) {
           n.setString(name + "$$" + suffix);
           n.putProp(Node.ORIGINALNAME_PROP, name);
@@ -426,7 +428,7 @@ public class ProcessCommonJSModules implements CompilerPass {
       if (typeNode.isString()) {
         String name = typeNode.getString();
         if (ES6ModuleLoader.isRelativeIdentifier(name)) {
-          int lastSlash = name.lastIndexOf("/");
+          int lastSlash = name.lastIndexOf('/');
           int endIndex = name.indexOf('.', lastSlash);
           String localTypeName = null;
           if (endIndex == -1) {
@@ -436,24 +438,22 @@ public class ProcessCommonJSModules implements CompilerPass {
           }
 
           String moduleName = name.substring(0, endIndex);
-          String loadAddress = loader.locate(moduleName, t.getInput());
+          URI loadAddress = loader.locateCommonJsModule(moduleName, t.getInput());
           if (loadAddress == null) {
             t.makeError(typeNode, ES6ModuleLoader.LOAD_ERROR, moduleName);
             return;
           }
 
-          String globalModuleName = toModuleName(loadAddress);
+          String globalModuleName = ES6ModuleLoader.toModuleName(loadAddress);
           typeNode.setString(
-              localTypeName == null ?
-              globalModuleName :
-              globalModuleName + localTypeName);
+              localTypeName == null ? globalModuleName : globalModuleName + localTypeName);
         } else {
           int endIndex = name.indexOf('.');
           if (endIndex == -1) {
             endIndex = name.length();
           }
           String baseName = name.substring(0, endIndex);
-          Scope.Var var = t.getScope().getVar(baseName);
+          Var var = t.getScope().getVar(baseName);
           if (var != null && var.isGlobal()) {
             typeNode.setString(baseName + "$$" + suffix + name.substring(endIndex));
             typeNode.putProp(Node.ORIGINALNAME_PROP, name);

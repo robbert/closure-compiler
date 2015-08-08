@@ -19,21 +19,20 @@ package com.google.javascript.jscomp;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import com.google.javascript.jscomp.ControlFlowGraph.AbstractCfgNodeTraversalCallback;
 import com.google.javascript.jscomp.ControlFlowGraph.Branch;
 import com.google.javascript.jscomp.MustBeReachingVariableDef.Definition;
 import com.google.javascript.jscomp.NodeTraversal.AbstractPostOrderCallback;
 import com.google.javascript.jscomp.NodeTraversal.AbstractShallowCallback;
 import com.google.javascript.jscomp.NodeTraversal.ScopedCallback;
-import com.google.javascript.jscomp.Scope.Var;
 import com.google.javascript.jscomp.graph.DiGraph.DiGraphEdge;
 import com.google.javascript.jscomp.graph.DiGraph.DiGraphNode;
 import com.google.javascript.rhino.Node;
 import com.google.javascript.rhino.Token;
 
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
@@ -72,7 +71,7 @@ class FlowSensitiveInlineVariables extends AbstractPostOrderCallback
    * need two separate dataflow result.
    */
   private final AbstractCompiler compiler;
-  private final Set<Var> inlinedNewDependencies = Sets.newHashSet();
+  private final Set<Var> inlinedNewDependencies = new HashSet<>();
 
   // These two pieces of data is persistent in the whole execution of enter
   // scope.
@@ -135,11 +134,11 @@ class FlowSensitiveInlineVariables extends AbstractPostOrderCallback
     ControlFlowAnalysis cfa = new ControlFlowAnalysis(compiler, false, true);
     // Process the body of the function.
     Preconditions.checkState(t.getScopeRoot().isFunction());
-    cfa.process(null, t.getScopeRoot().getLastChild());
+    cfa.process(null, t.getScopeRoot());
     cfg = cfa.getCfg();
     reachingDef = new MustBeReachingVariableDef(cfg, t.getScope(), compiler);
     reachingDef.analyze();
-    candidates = Lists.newLinkedList();
+    candidates = new LinkedList<>();
 
     // Using the forward reaching definition search to find all the inline
     // candidates
@@ -432,7 +431,7 @@ class FlowSensitiveInlineVariables extends AbstractPostOrderCallback
         def.removeChild(rhs);
         useParent.replaceChild(use, rhs);
       } else {
-        Preconditions.checkState(false, "No other definitions can be inlined.");
+        throw new IllegalStateException("No other definitions can be inlined.");
       }
       compiler.reportCodeChange();
     }

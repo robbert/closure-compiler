@@ -59,6 +59,7 @@ DOMStringList.prototype.length;
  * @param {string} str
  * @return {boolean}
  * @see http://www.w3.org/TR/DOM-Level-3-Core/core.html#DOMStringList-contains
+ * @nosideeffects
  */
 DOMStringList.prototype.contains = function(str) {};
 
@@ -66,6 +67,7 @@ DOMStringList.prototype.contains = function(str) {};
  * @param {number} index
  * @return {string}
  * @see http://www.w3.org/TR/DOM-Level-3-Core/core.html#DOMStringList-item
+ * @nosideeffects
  */
 DOMStringList.prototype.item = function(index) {};
 
@@ -398,7 +400,7 @@ Node.prototype.lookupNamespaceURI = function(prefix) {};
 Node.prototype.lookupPrefix = function(namespaceURI) {};
 
 /**
- * @return undefined
+ * @return {undefined}
  * @see http://www.w3.org/TR/DOM-Level-3-Core/core.html#ID-normalize
  */
 Node.prototype.normalize = function() {};

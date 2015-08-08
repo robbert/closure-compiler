@@ -23,17 +23,18 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.javascript.jscomp.NodeTraversal.AbstractPostOrderCallback;
 import com.google.javascript.rhino.IR;
 import com.google.javascript.rhino.Node;
 import com.google.javascript.rhino.Token;
-import com.google.javascript.rhino.jstype.JSType;
-import com.google.javascript.rhino.jstype.JSTypeRegistry;
+import com.google.javascript.rhino.TypeI;
+import com.google.javascript.rhino.TypeIRegistry;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -60,13 +61,13 @@ class ReplaceStrings extends AbstractPostOrderCallback
   private static final String REPLACE_ALL_MARKER = "*";
 
   private final AbstractCompiler compiler;
-  private final JSTypeRegistry registry;
+  private final TypeIRegistry registry;
 
   //
-  private final Map<String, Config> functions = Maps.newHashMap();
+  private final Map<String, Config> functions = new HashMap<>();
   private final Multimap<String, String> methods = HashMultimap.create();
   private final NameGenerator nameGenerator;
-  private final Map<String, Result> results = Maps.newLinkedHashMap();
+  private final Map<String, Result> results = new LinkedHashMap<>();
 
   /**
    * Describes a function to look for a which parameters to replace.
@@ -125,7 +126,7 @@ class ReplaceStrings extends AbstractPostOrderCallback
     this.compiler = compiler;
     this.placeholderToken = placeholderToken.isEmpty()
         ? DEFAULT_PLACEHOLDER_TOKEN : placeholderToken;
-    this.registry = compiler.getTypeRegistry();
+    this.registry = compiler.getTypeIRegistry();
 
     Iterable<String> reservedNames = blacklisted;
     if (previousMappings != null) {
@@ -217,8 +218,8 @@ class ReplaceStrings extends AbstractPostOrderCallback
             }
             if (classes != null) {
               Node lhs = calledFn.getFirstChild();
-              if (lhs.getJSType() != null) {
-                JSType type = lhs.getJSType().restrictByNotNullOrUndefined();
+              if (lhs.getTypeI() != null) {
+                TypeI type = lhs.getTypeI().restrictByNotNullOrUndefined();
                 Config config = findMatchingClass(type, classes);
                 if (config != null) {
                   doSubstitutions(t, config, n);
@@ -250,13 +251,13 @@ class ReplaceStrings extends AbstractPostOrderCallback
    * if no match was found.
    */
   private Config findMatchingClass(
-      JSType callClassType, Collection<String> declarationNames) {
-    if (!callClassType.isNoObjectType() && !callClassType.isUnknownType()) {
+      TypeI callClassType, Collection<String> declarationNames) {
+    if (!callClassType.isBottom() && !callClassType.isUnknownType()) {
       for (String declarationName : declarationNames) {
         String className = getClassFromDeclarationName(declarationName);
-        JSType methodClassType = registry.getType(className);
+        TypeI methodClassType = registry.getType(className);
         if (methodClassType != null
-            && callClassType.isSubtype(methodClassType)) {
+            && callClassType.isSubtypeOf(methodClassType)) {
           return functions.get(declarationName);
         }
       }
@@ -317,7 +318,7 @@ class ReplaceStrings extends AbstractPostOrderCallback
         break;
       case Token.NAME:
         // If the referenced variable is a constant, use its value.
-        Scope.Var var = t.getScope().getVar(expr.getString());
+        Var var = t.getScope().getVar(expr.getString());
         if (var != null && var.isInferredConst()) {
           Node value = var.getInitialValue();
           if (value != null && value.isString()) {

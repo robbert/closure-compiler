@@ -60,7 +60,6 @@ import javax.annotation.Nullable;
  */
 class InferJSDocInfo extends AbstractPostOrderCallback
     implements HotSwapCompilerPass {
-
   private final AbstractCompiler compiler;
 
   InferJSDocInfo(AbstractCompiler compiler) {
@@ -110,7 +109,7 @@ class InferJSDocInfo extends AbstractPostOrderCallback
         // /** ... */ x = function () { ... }
         // 3) A NAME parent.
         // var x, /** ... */ y = function() { ... }
-        // 4) A VAR gramps.
+        // 4) A VAR grandparent.
         // /** ... */ var x = function() { ... }
         docInfo = n.getJSDocInfo();
         if (docInfo == null &&
@@ -220,14 +219,12 @@ class InferJSDocInfo extends AbstractPostOrderCallback
         objType.setJSDocInfo(docInfo);
 
         if (objType.isConstructor() || objType.isInterface()) {
-          JSType.toMaybeFunctionType(objType).getInstanceType().setJSDocInfo(
-              docInfo);
+          JSType.toMaybeFunctionType(objType).getInstanceType().setJSDocInfo(docInfo);
         } else if (objType instanceof EnumType) {
           ((EnumType) objType).getElementsType().setJSDocInfo(docInfo);
         }
       }
-    } else if (!objType.isNativeObjectType() &&
-        objType.isFunctionType()) {
+    } else if (!objType.isNativeObjectType() && objType.isFunctionType()) {
       // Structural functions.
       objType.setJSDocInfo(docInfo);
     }

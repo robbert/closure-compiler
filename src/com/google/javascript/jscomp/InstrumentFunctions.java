@@ -16,7 +16,6 @@
 package com.google.javascript.jscomp;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
 import com.google.javascript.jscomp.ControlFlowGraph.Branch;
 import com.google.javascript.jscomp.NodeTraversal.AbstractPostOrderCallback;
 import com.google.javascript.jscomp.graph.DiGraph.DiGraphNode;
@@ -26,6 +25,7 @@ import com.google.javascript.rhino.Token;
 import com.google.protobuf.TextFormat;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -99,7 +99,7 @@ class InstrumentFunctions implements CompilerPass {
       this.reportFunctionName = "";
       this.reportFunctionExitName = "";
       this.appNameSetter = "";
-      this.declarationsToRemove = Lists.newArrayList();
+      this.declarationsToRemove = new ArrayList<>();
       return;
     }
 
@@ -171,12 +171,10 @@ class InstrumentFunctions implements CompilerPass {
 
     @Override
     public void visit(NodeTraversal t, Node n, Node parent) {
-      if (NodeUtil.isVarDeclaration(n)) {
-        if (removable.contains(n.getString())) {
-          parent.removeChild(n);
-          if (!parent.hasChildren()) {
-            parent.getParent().removeChild(parent);
-          }
+      if (NodeUtil.isVarDeclaration(n) && removable.contains(n.getString())) {
+        parent.removeChild(n);
+        if (!parent.hasChildren()) {
+          parent.getParent().removeChild(parent);
         }
       }
     }
@@ -222,12 +220,13 @@ class InstrumentFunctions implements CompilerPass {
     }
 
     /**
-     * @param body  body of function with id == this.functionId
+     * @param function function with id == this.functionId
      */
-    void process(Node body) {
+    void process(Node function) {
+      Node body = function.getLastChild();
       NodeTraversal.traverse(compiler, body, this);
 
-      if (!allPathsReturn(body)) {
+      if (!allPathsReturn(function)) {
         Node call = newReportFunctionExitNode();
         Node expr = IR.exprResult(call);
         body.addChildToBack(expr);
@@ -266,11 +265,11 @@ class InstrumentFunctions implements CompilerPass {
     /**
      * @return true if all paths from block must exit with an explicit return.
      */
-    private boolean allPathsReturn(Node block) {
+    private boolean allPathsReturn(Node function) {
       // Computes the control flow graph.
       ControlFlowAnalysis cfa = new ControlFlowAnalysis(
           compiler, false, false);
-      cfa.process(null, block);
+      cfa.process(null, function);
       ControlFlowGraph<Node> cfg = cfa.getCfg();
 
       Node returnPathsParent = cfg.getImplicitReturn().getValue();
@@ -299,7 +298,7 @@ class InstrumentFunctions implements CompilerPass {
       }
 
       if (!reportFunctionName.isEmpty()) {
-        Node body = n.getFirstChild().getNext().getNext();
+        Node body = n.getLastChild();
         Node call = IR.call(
             IR.name(reportFunctionName),
             IR.number(id));
@@ -310,8 +309,7 @@ class InstrumentFunctions implements CompilerPass {
       }
 
       if (!reportFunctionExitName.isEmpty()) {
-        Node body = n.getFirstChild().getNext().getNext();
-        (new InstrumentReturns(id)).process(body);
+        (new InstrumentReturns(id)).process(n);
       }
 
       if (!definedFunctionName.isEmpty()) {

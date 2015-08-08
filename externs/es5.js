@@ -72,15 +72,15 @@ String.prototype.trimRight = function() {};
  * Note: not a real constructor.
  * @constructor
  */
-var ObjectPropertyDescriptor = function(){};
+function ObjectPropertyDescriptor() {}
 
 /** @type {*} */
 ObjectPropertyDescriptor.prototype.value;
 
-/** @type {(function():?)||undefined} */
+/** @type {(function():?)|undefined} */
 ObjectPropertyDescriptor.prototype.get;
 
-/** @type {(function(?):void)||undefined} */
+/** @type {(function(?):void)|undefined} */
 ObjectPropertyDescriptor.prototype.set;
 
 /** @type {boolean|undefined} */
@@ -160,8 +160,8 @@ Object.getPrototypeOf = function(obj) {};
 
 
 /**
- * @param {!T} obj
- * @return {!T}
+ * @param {T} obj
+ * @return {T}
  * @template T
  * @see https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/Object/preventExtensions
  */
@@ -169,8 +169,8 @@ Object.preventExtensions = function(obj) {};
 
 
 /**
- * @param {!T} obj
- * @return {!T}
+ * @param {T} obj
+ * @return {T}
  * @template T
  * @see https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/Object/seal
  */
@@ -178,8 +178,8 @@ Object.seal = function(obj) {};
 
 
 /**
- * @param {!T} obj
- * @return {!T}
+ * @param {T} obj
+ * @return {T}
  * @template T
  * @see https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/Object/freeze
  */
@@ -241,7 +241,7 @@ Date.prototype.toJSON = function(opt_ignoredKey) {};
  * A fake type to model the JSON object.
  * @constructor
  */
-var JSONType = function() {};
+function JSONType() {}
 
 
 /**

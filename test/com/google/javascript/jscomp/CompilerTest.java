@@ -16,14 +16,12 @@
 
 package com.google.javascript.jscomp;
 
+import static com.google.common.truth.Truth.assertThat;
+
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
-import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Multimap;
 import com.google.debugging.sourcemap.FilePosition;
 import com.google.debugging.sourcemap.SourceMapGeneratorV3;
 import com.google.debugging.sourcemap.proto.Mapping.OriginalMapping;
@@ -39,6 +37,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -46,7 +46,7 @@ import java.util.Map;
  * @author johnlenz@google.com (John Lenz)
  */
 
-public class CompilerTest extends TestCase {
+public final class CompilerTest extends TestCase {
 
   // Verify the line and column information is maintained after a reset
   public void testCodeBuilderColumnAfterReset() {
@@ -59,7 +59,7 @@ public class CompilerTest extends TestCase {
 
     cb.reset();
 
-    assertTrue(cb.toString().isEmpty());
+    assertThat(cb.toString()).isEmpty();
     assertEquals(1, cb.getLineIndex());
     assertEquals(6, cb.getColumnIndex());
   }
@@ -83,7 +83,7 @@ public class CompilerTest extends TestCase {
   }
 
   public void testCyclicalDependencyInInputs() {
-    List<SourceFile> inputs = Lists.newArrayList(
+    List<SourceFile> inputs = ImmutableList.of(
         SourceFile.fromCode(
             "gin", "goog.provide('gin'); goog.require('tonic'); var gin = {};"),
         SourceFile.fromCode("tonic",
@@ -91,7 +91,7 @@ public class CompilerTest extends TestCase {
         SourceFile.fromCode(
             "mix", "goog.require('gin'); goog.require('tonic');"));
     CompilerOptions options = new CompilerOptions();
-    options.ideMode = true;
+    options.setIdeMode(true);
     options.setManageClosureDependencies(true);
     Compiler compiler = new Compiler();
     compiler.init(ImmutableList.<SourceFile>of(), inputs, options);
@@ -124,26 +124,26 @@ public class CompilerTest extends TestCase {
   }
 
   public void testCommonJSProvidesAndRequire() throws Exception {
-    List<SourceFile> inputs = Lists.newArrayList(
+    List<SourceFile> inputs = ImmutableList.of(
         SourceFile.fromCode("gin.js", "require('tonic')"),
         SourceFile.fromCode("tonic.js", ""),
         SourceFile.fromCode("mix.js", "require('gin'); require('tonic');"));
-    List<String> entryPoints = Lists.newArrayList("module$mix");
+    List<String> entryPoints = ImmutableList.of("module$mix");
 
     Compiler compiler = initCompilerForCommonJS(inputs, entryPoints);
     JSModuleGraph graph = compiler.getModuleGraph();
     assertEquals(3, graph.getModuleCount());
     List<CompilerInput> result = graph.manageDependencies(entryPoints,
         compiler.getInputsForTesting());
-    assertEquals("[module$tonic]", result.get(0).getName());
-    assertEquals("[module$gin]", result.get(1).getName());
+    assertEquals("module$tonic$fillFile", result.get(0).getName());
+    assertEquals("module$gin$fillFile", result.get(1).getName());
     assertEquals("tonic.js", result.get(2).getName());
     assertEquals("gin.js", result.get(3).getName());
     assertEquals("mix.js", result.get(4).getName());
   }
 
   public void testCommonJSMissingRequire() throws Exception {
-    List<SourceFile> inputs = Lists.newArrayList(
+    List<SourceFile> inputs = ImmutableList.of(
         SourceFile.fromCode("gin.js", "require('missing')"));
     Compiler compiler = initCompilerForCommonJS(
         inputs, ImmutableList.of("module$gin"));
@@ -152,8 +152,7 @@ public class CompilerTest extends TestCase {
     String error = compiler.getErrorManager().getErrors()[0].toString();
     assertTrue(
         "Unexpected error: " + error,
-        error.contains(
-            "required entry point \"module$missing\" never provided"));
+        error.contains("Failed to load module \"missing\" at gin.js"));
   }
 
   private String normalize(String path) {
@@ -169,15 +168,15 @@ public class CompilerTest extends TestCase {
             normalize("../original/source.html"),
             originalSourcePosition));
     String origSourceName = normalize("original/source.html");
-    List<SourceFile> originalSources = Lists.newArrayList(
+    List<SourceFile> originalSources = ImmutableList.of(
         SourceFile.fromCode(origSourceName, "<div ng-show='foo()'>"));
 
     CompilerOptions options = new CompilerOptions();
     options.inputSourceMaps = inputSourceMaps;
     Compiler compiler = new Compiler();
     compiler.setOriginalSourcesLoader(createFileLoader(originalSources));
-    compiler.init(Lists.<SourceFile>newArrayList(),
-        Lists.<SourceFile>newArrayList(), options);
+    compiler.init(new ArrayList<SourceFile>(),
+         new ArrayList<SourceFile>(), options);
 
     assertEquals(
         OriginalMapping.newBuilder()
@@ -221,12 +220,12 @@ public class CompilerTest extends TestCase {
       List<SourceFile> inputs, List<String> entryPoints)
       throws Exception {
     CompilerOptions options = new CompilerOptions();
-    options.ideMode = true;
+    options.setIdeMode(true);
     options.setManageClosureDependencies(entryPoints);
-    options.closurePass = true;
-    options.processCommonJSModules = true;
+    options.setClosurePass(true);
+    options.setProcessCommonJSModules(true);
     Compiler compiler = new Compiler();
-    compiler.init(Lists.<SourceFile>newArrayList(), inputs, options);
+    compiler.init(new ArrayList<SourceFile>(), inputs, options);
     compiler.parseInputs();
     return compiler;
   }
@@ -241,7 +240,7 @@ public class CompilerTest extends TestCase {
   public void testInputDelimiters() throws Exception {
     Compiler compiler = new Compiler();
     CompilerOptions options = createNewFlagBasedOptions();
-    options.printInputDelimiter = true;
+    options.setPrintInputDelimiter(true);
 
     String fileOverview = "/** @fileoverview Foo */";
     List<SourceFile> inputs = ImmutableList.of(
@@ -496,15 +495,52 @@ public class CompilerTest extends TestCase {
         null);
   }
 
+  public void testMultipleUniqueLicenses() throws Exception {
+    String js1 = "/** @license One license here */\n"
+                 + "var x;";
+    String js2 = "/** @license Another license here */\n"
+                 + "var y;";
+    String expected = "/*\n One license here */\n"
+                      + "/*\n Another license here */\n";
+
+    Compiler compiler = new Compiler();
+    CompilerOptions options = createNewFlagBasedOptions();
+    List<SourceFile> inputs = ImmutableList.of(
+        SourceFile.fromCode("testcode1", js1),
+        SourceFile.fromCode("testcode2", js2));
+    Result result = compiler.compile(EMPTY_EXTERNS, inputs, options);
+
+    assertTrue(Joiner.on(",").join(result.errors), result.success);
+    assertEquals(expected, compiler.toSource());
+  }
+
+  public void testMultipleIndenticalLicenses() throws Exception {
+    String js1 = "/** @license Identical license here */\n"
+                 + "var x;";
+    String js2 = "/** @license Identical license here */\n"
+                 + "var y;";
+    String expected = "/*\n Identical license here */\n";
+
+    Compiler compiler = new Compiler();
+    CompilerOptions options = createNewFlagBasedOptions();
+    List<SourceFile> inputs = ImmutableList.of(
+        SourceFile.fromCode("testcode1", js1),
+        SourceFile.fromCode("testcode2", js2));
+    Result result = compiler.compile(EMPTY_EXTERNS, inputs, options);
+
+    assertTrue(Joiner.on(",").join(result.errors), result.success);
+    assertEquals(expected, compiler.toSource());
+  }
+
   public void testDefineNoOverriding() throws Exception {
-    Map<String, Node> emptyMap = Maps.newHashMap();
-    List<String> defines = Lists.newArrayList();
+    Map<String, Node> emptyMap = new HashMap<>();
+    List<String> defines = new ArrayList<>();
     assertDefineOverrides(emptyMap, defines);
   }
 
   public void testDefineOverriding1() throws Exception {
     List<String> defines =
-        Lists.newArrayList(
+        ImmutableList.of(
             "COMPILED",
             "DEF_TRUE=true",
             "DEF_FALSE=false",
@@ -520,46 +556,46 @@ public class CompilerTest extends TestCase {
   }
 
   public void testDefineOverriding2() throws Exception {
-    List<String> defines = Lists.newArrayList("DEF_STRING='='");
+    List<String> defines = ImmutableList.of("DEF_STRING='='");
     Map<String, Node> expected = ImmutableMap.of(
         "DEF_STRING", Node.newString("="));
     assertDefineOverrides(expected, defines);
   }
 
   public void testDefineOverriding3() throws Exception {
-    List<String> defines = Lists.newArrayList("a.DEBUG");
+    List<String> defines = ImmutableList.of("a.DEBUG");
     Map<String, Node> expected = ImmutableMap.of(
         "a.DEBUG", new Node(Token.TRUE));
     assertDefineOverrides(expected, defines);
   }
 
   public void testBadDefineOverriding1() throws Exception {
-    List<String> defines = Lists.newArrayList("DEF_STRING=");
+    List<String> defines = ImmutableList.of("DEF_STRING=");
     assertCreateDefinesThrowsException(defines);
   }
 
   public void testBadDefineOverriding2() throws Exception {
-    List<String> defines = Lists.newArrayList("DEF_STRING='xyz");
+    List<String> defines = ImmutableList.of("DEF_STRING='xyz");
     assertCreateDefinesThrowsException(defines);
   }
 
   public void testBadDefineOverriding3() throws Exception {
-    List<String> defines = Lists.newArrayList("=true");
+    List<String> defines = ImmutableList.of("=true");
     assertCreateDefinesThrowsException(defines);
   }
 
   public void testBadDefineOverriding4() throws Exception {
-    List<String> defines = Lists.newArrayList("DEF_STRING==");
+    List<String> defines = ImmutableList.of("DEF_STRING==");
     assertCreateDefinesThrowsException(defines);
   }
 
   public void testBadDefineOverriding5() throws Exception {
-    List<String> defines = Lists.newArrayList("DEF_STRING='");
+    List<String> defines = ImmutableList.of("DEF_STRING='");
     assertCreateDefinesThrowsException(defines);
   }
 
   public void testBadDefineOverriding6() throws Exception {
-    List<String> defines = Lists.newArrayList("DEF_STRING='''");
+    List<String> defines = ImmutableList.of("DEF_STRING='''");
     assertCreateDefinesThrowsException(defines);
   }
 
@@ -584,7 +620,7 @@ public class CompilerTest extends TestCase {
 
     // equality of nodes compares by reference, so instead,
     // compare the maps manually using Node.checkTreeEqualsSilent
-    assertEquals(expected.size(), actual.size());
+    assertThat(actual).hasSize(expected.size());
     for (Map.Entry<String, Node> entry : expected.entrySet()) {
       assertTrue(entry.getKey(), actual.containsKey(entry.getKey()));
 
@@ -606,7 +642,7 @@ public class CompilerTest extends TestCase {
       String outputSource = compiler.toSource();
       assertEquals(expected, outputSource);
     } else {
-      assertEquals(1, result.errors.length);
+      assertThat(result.errors).hasLength(1);
       assertEquals(error, result.errors[0].getType());
     }
     return result;
@@ -654,8 +690,8 @@ public class CompilerTest extends TestCase {
   public void testExportSymbolReservesNamesForRenameVars() {
     Compiler compiler = new Compiler();
     CompilerOptions options = new CompilerOptions();
-    options.closurePass = true;
-    options.variableRenaming = VariableRenamingPolicy.ALL;
+    options.setClosurePass(true);
+    options.setVariableRenaming(VariableRenamingPolicy.ALL);
 
     String js = "var goog, x; goog.exportSymbol('a', x);";
     List<SourceFile> inputs = ImmutableList.of(
@@ -669,9 +705,9 @@ public class CompilerTest extends TestCase {
   public void testGenerateExportsReservesNames() {
     Compiler compiler = new Compiler();
     CompilerOptions options = new CompilerOptions();
-    options.closurePass = true;
-    options.variableRenaming = VariableRenamingPolicy.ALL;
-    options.generateExports = true;
+    options.setClosurePass(true);
+    options.setVariableRenaming(VariableRenamingPolicy.ALL);
+    options.setGenerateExports(true);
 
     String js = "var goog; /** @export */ var a={};";
     List<SourceFile> inputs = ImmutableList.of(
@@ -728,29 +764,24 @@ public class CompilerTest extends TestCase {
   public void testIdeModeSkipsOptimizations() {
     Compiler compiler = new Compiler();
     CompilerOptions options = createNewFlagBasedOptions();
-    options.ideMode = true;
-
-    Multimap<CustomPassExecutionTime, CompilerPass> customPasses =
-        HashMultimap.create();
+    options.setIdeMode(true);
 
     final boolean[] before = new boolean[1];
     final boolean[] after = new boolean[1];
 
-    customPasses.put(CustomPassExecutionTime.BEFORE_OPTIMIZATIONS,
+    options.addCustomPass(CustomPassExecutionTime.BEFORE_OPTIMIZATIONS,
                      new CompilerPass() {
                        @Override public void process(Node externs, Node root) {
                          before[0] = true;
                        }
                      });
 
-    customPasses.put(CustomPassExecutionTime.BEFORE_OPTIMIZATION_LOOP,
+    options.addCustomPass(CustomPassExecutionTime.BEFORE_OPTIMIZATION_LOOP,
                      new CompilerPass() {
                        @Override public void process(Node externs, Node root) {
                          after[0] = true;
                        }
                      });
-
-    options.customPasses = customPasses;
 
     String js = "var x = 1;";
     List<SourceFile> inputs = ImmutableList.of(
@@ -763,13 +794,12 @@ public class CompilerTest extends TestCase {
 
   public void testAdditionalReplacementsForClosure() {
     CompilerOptions options = createNewFlagBasedOptions();
-    options.locale = "it_IT";
-    options.closurePass = true;
+    options.setLocale("it_IT");
+    options.setClosurePass(true);
 
-    Map<String, Node> replacements =
-        DefaultPassConfig.getAdditionalReplacements(options);
+    Map<String, Node> replacements = DefaultPassConfig.getAdditionalReplacements(options);
 
-    assertEquals(2, replacements.size());
+    assertThat(replacements).hasSize(2);
     assertEquals("it_IT", replacements.get("goog.LOCALE").getString());
   }
 
@@ -783,42 +813,9 @@ public class CompilerTest extends TestCase {
     assertTrue(ast.isEquivalentTo(newInput.getAstRoot(compiler)));
   }
 
-  public void testTargetSpecificCompiles() throws Exception {
-    String testExterns = ""
-        + "var window;"
-        + "/** @param {string} str */"
-        + "function alert(str) {}";
-    String testCode = ""
-        + "/** @define {number} */"
-        + "var mydef = 0;"
-        + "if (mydef == 1) {"
-        + "  alert('1');"
-        + "} else if (mydef == 2) {"
-        + "  alert('2');"
-        + "} else if (mydef == 3) {"
-        + "  alert('3');"
-        + "} else { "
-        + "  alert('4');"
-        + "}";
-
-    CompilerOptions options = createNewFlagBasedOptions();
-    Compiler compiler = new Compiler();
-    compiler.init(
-        ImmutableList.of(SourceFile.fromCode("ext.js", testExterns)),
-        ImmutableList.of(SourceFile.fromCode("in1.js", testCode)),
-        options);
-    compiler.parse();
-    compiler.check();
-
-    byte[] savedState = serialize(compiler.getState());
-    for (int num = 1; num <= 3; ++num) {
-      compiler.setState((Compiler.IntermediateState) deserialize(savedState));
-
-      options.setDefineToNumberLiteral("mydef", num);
-      compiler.processDefines();
-      compiler.optimize();
-      assertEquals("alert(\"" + num + "\");", compiler.toSource());
-    }
+  public void testGetEmptyResult() {
+    Result result = new Compiler().getResult();
+    assertThat(result.errors).isEmpty();
   }
 
   private static CompilerOptions createNewFlagBasedOptions() {

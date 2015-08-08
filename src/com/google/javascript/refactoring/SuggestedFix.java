@@ -36,6 +36,8 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.annotation.Nullable;
+
 
 /**
  * Object representing the fixes to apply to the source code to create the
@@ -46,11 +48,29 @@ import java.util.regex.Pattern;
  */
 public final class SuggestedFix {
 
+  private final Node originalMatchedNode;
   // Multimap of filename to a modification to that file.
   private final SetMultimap<String, CodeReplacement> replacements;
 
-  private SuggestedFix(SetMultimap<String, CodeReplacement> replacements) {
+  // An optional description of the fix, to distinguish between the various possible fixes
+  // for errors that have multiple fixes.
+  @Nullable private final String description;
+
+  private SuggestedFix(
+      Node originalMatchedNode,
+      SetMultimap<String, CodeReplacement> replacements,
+      @Nullable String description) {
+    this.originalMatchedNode = originalMatchedNode;
     this.replacements = replacements;
+    this.description = description;
+  }
+
+  /**
+   * Returns the JS Compiler Node for the original node that caused this SuggestedFix to
+   * be constructed.
+   */
+  public Node getOriginalMatchedNode() {
+    return originalMatchedNode;
   }
 
   /**
@@ -59,6 +79,10 @@ public final class SuggestedFix {
    */
   public SetMultimap<String, CodeReplacement> getReplacements() {
     return replacements;
+  }
+
+  @Nullable public String getDescription() {
+    return description;
   }
 
   @Override public String toString() {
@@ -75,8 +99,32 @@ public final class SuggestedFix {
    * manipulate JS nodes.
    */
   public static final class Builder {
+    private Node originalMatchedNode = null;
     private final ImmutableSetMultimap.Builder<String, CodeReplacement> replacements =
         ImmutableSetMultimap.builder();
+    private String description = null;
+
+    /**
+     * Sets the node on this SuggestedFix that caused this SuggestedFix to be built
+     * in the first place.
+     */
+    public Builder setOriginalMatchedNode(Node node) {
+      originalMatchedNode = node;
+      return this;
+    }
+
+    /**
+     * Inserts a new node as the first child of the provided node.
+     */
+    public Builder addChildToFront(Node parentNode, String content) {
+      Preconditions.checkState(parentNode.isBlock(),
+          "addChildToFront is only supported for BLOCK statements.");
+      int startPosition = parentNode.getSourceOffset() + 1;
+      replacements.put(
+          parentNode.getSourceFileName(),
+          new CodeReplacement(startPosition, 0, "\n" + content));
+      return this;
+    }
 
     /**
      * Inserts a new node before the provided node.
@@ -99,6 +147,8 @@ public final class SuggestedFix {
       if (jsDoc != null) {
         startPosition = jsDoc.getOriginalCommentPosition();
       }
+      Preconditions.checkNotNull(nodeToInsertBefore.getSourceFileName(),
+          "No source file name for node: %s", nodeToInsertBefore);
       replacements.put(
           nodeToInsertBefore.getSourceFileName(),
           new CodeReplacement(startPosition, 0, content));
@@ -106,9 +156,24 @@ public final class SuggestedFix {
     }
 
     /**
-     * Deletes a node and its contents from the source file.
+     * Deletes a node and its contents from the source file. If the node is a child of a
+     * block or top level statement, this will also delete the whitespace before the node.
      */
     public Builder delete(Node n) {
+      return delete(n, true);
+    }
+
+    /**
+     * Deletes a node and its contents from the source file.
+     */
+    public Builder deleteWithoutRemovingSurroundWhitespace(Node n) {
+      return delete(n, false);
+    }
+
+    /**
+     * Deletes a node and its contents from the source file.
+     */
+    private Builder delete(Node n, boolean deleteSurroundingWhitespace) {
       int startPosition = n.getSourceOffset();
       int length = n.getLength();
       // TODO(mknichel): This case is not covered by NodeUtil.getBestJSDocInfo
@@ -116,6 +181,47 @@ public final class SuggestedFix {
       if (jsDoc != null) {
         length = n.getLength() + (startPosition - jsDoc.getOriginalCommentPosition());
         startPosition = jsDoc.getOriginalCommentPosition();
+      }
+      // Variable declarations require special handling since the NAME node doesn't contain enough
+      // information if the variable is declared in a multi-variable declaration. The NAME node
+      // in a VAR declaration doesn't include its child in its length if there is an inline
+      // assignment, and the code needs to know how to delete the commas. See SuggestedFixTest for
+      // more information.
+      // TODO(mknichel): Move this logic and the start position logic to a helper function
+      // so that it can be reused in other methods.
+      if (n.isName() && n.getParent().isVar()) {
+        if (n.getNext() != null) {
+          length = n.getNext().getSourceOffset() - startPosition;
+        } else if (n.hasChildren()) {
+          Node child = n.getFirstChild();
+          length = (child.getSourceOffset() + child.getLength()) - startPosition;
+        }
+        if (n.getParent().getLastChild() == n && n != n.getParent().getFirstChild()) {
+          Node previousSibling = n.getParent().getChildBefore(n);
+          if (previousSibling.hasChildren()) {
+            Node child = previousSibling.getFirstChild();
+            int startPositionDiff = startPosition - (child.getSourceOffset() + child.getLength());
+            startPosition -= startPositionDiff;
+            length += startPositionDiff;
+          } else {
+            int startPositionDiff = startPosition - (
+                previousSibling.getSourceOffset() + previousSibling.getLength());
+            startPosition -= startPositionDiff;
+            length += startPositionDiff;
+          }
+        }
+      }
+      Node parent = n.getParent();
+      if (deleteSurroundingWhitespace
+          && parent != null
+          && (parent.isScript() || parent.isBlock())) {
+        Node previousSibling = parent.getChildBefore(n);
+        if (previousSibling != null) {
+          int previousSiblingEndPosition =
+              previousSibling.getSourceOffset() + previousSibling.getLength();
+          length += (startPosition - previousSiblingEndPosition);
+          startPosition = previousSiblingEndPosition;
+        }
       }
       replacements.put(n.getSourceFileName(), new CodeReplacement(startPosition, length, ""));
       return this;
@@ -142,7 +248,7 @@ public final class SuggestedFix {
      */
     public Builder rename(Node n, String name, boolean replaceEntireName) {
       Node nodeToRename = null;
-      if (n.isCall()) {
+      if (n.isCall() || n.isTaggedTemplateLit()) {
         Node child = n.getFirstChild();
         nodeToRename = child;
         if (!replaceEntireName && child.isGetProp()) {
@@ -158,10 +264,13 @@ public final class SuggestedFix {
         }
       } else if (n.isStringKey()) {
         nodeToRename = n;
+      } else if (n.isString()) {
+        Preconditions.checkState(n.getParent().isGetProp());
+        nodeToRename = n;
       } else {
         // TODO(mknichel): Implement the rest of this function.
         throw new UnsupportedOperationException(
-            "Rename is not implemented for node type: " + n.getType());
+            "Rename is not implemented for this node type: " + n);
       }
       replacements.put(
           nodeToRename.getSourceFileName(),
@@ -218,13 +327,18 @@ public final class SuggestedFix {
     public Builder removeCast(Node n, AbstractCompiler compiler) {
       Preconditions.checkArgument(n.isCast());
       JSDocInfo jsDoc = n.getJSDocInfo();
-      Node child = n.getFirstChild();
       replacements.put(
           n.getSourceFileName(),
           new CodeReplacement(
               jsDoc.getOriginalCommentPosition(),
-              n.getSourceOffset() + n.getLength() - jsDoc.getOriginalCommentPosition(),
-              generateCode(compiler, child)));
+              n.getFirstChild().getSourceOffset() - jsDoc.getOriginalCommentPosition(),
+              ""));
+      replacements.put(
+          n.getSourceFileName(),
+          new CodeReplacement(
+              n.getSourceOffset() + n.getLength() - 1,
+              1 /* length */,
+              ""));
       return this;
     }
 
@@ -294,7 +408,13 @@ public final class SuggestedFix {
             position == i, "The specified position must be less than the number of arguments.");
         startPosition = n.getSourceOffset() + n.getLength() - 1;
       } else {
-        startPosition = argument.getSourceOffset();
+        JSDocInfo jsDoc = argument.getJSDocInfo();
+        if (jsDoc != null) {
+          // Remove any cast or associated JS Doc if it exists.
+          startPosition = jsDoc.getOriginalCommentPosition();
+        } else {
+          startPosition = argument.getSourceOffset();
+        }
       }
 
       String newContent = Joiner.on(", ").join(args);
@@ -388,7 +508,7 @@ public final class SuggestedFix {
     public Builder removeGoogRequire(Match m, String namespace) {
       Node googRequireNode = findGoogRequireNode(m.getNode(), m.getMetadata(), namespace);
       if (googRequireNode != null) {
-        return delete(googRequireNode);
+        return deleteWithoutRemovingSurroundWhitespace(googRequireNode);
       }
       return this;
     }
@@ -433,8 +553,13 @@ public final class SuggestedFix {
           .build();
     }
 
+    public Builder setDescription(String description) {
+      this.description = description;
+      return this;
+    }
+
     public SuggestedFix build() {
-      return new SuggestedFix(replacements.build());
+      return new SuggestedFix(originalMatchedNode, replacements.build(), description);
     }
   }
 }

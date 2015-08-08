@@ -58,7 +58,7 @@ public class SimpleErrorReporter implements ErrorReporter {
     public void warning(String message, String sourceName, int line,
                         int lineOffset) {
         if (warnings == null) {
-            warnings = new ArrayList<String>();
+          warnings = new ArrayList<>();
         }
         warnings.add(formatDetailedMessage(message, sourceName, line));
     }
@@ -67,7 +67,7 @@ public class SimpleErrorReporter implements ErrorReporter {
     public void error(String message, String sourceName, int line,
                       int lineOffset) {
         if (errors == null) {
-            errors = new ArrayList<String>();
+          errors = new ArrayList<>();
         }
         errors.add(formatDetailedMessage(message, sourceName, line));
     }
@@ -116,7 +116,7 @@ public class SimpleErrorReporter implements ErrorReporter {
 
     static String getMessage(String messageId, Object[] arguments) {
       final String defaultResource
-          = "rhino_ast.java.com.google.javascript.rhino.Messages";
+          = "com.google.javascript.rhino.Messages";
 
       Locale locale = Locale.getDefault();
 

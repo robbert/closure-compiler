@@ -17,7 +17,6 @@
 package com.google.javascript.jscomp;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import com.google.javascript.jscomp.NodeTraversal.AbstractPostOrderCallback;
 import com.google.javascript.rhino.IR;
 import com.google.javascript.rhino.JSDocInfo;
@@ -93,10 +92,6 @@ class AngularPass extends AbstractPostOrderCallback
           "@ngInject can only be used when defining a function or " +
           "assigning a function expression.");
 
-  static final DiagnosticType FUNCTION_NAME_ERROR =
-      DiagnosticType.error("JSC_FUNCTION_NAME_ERROR",
-          "Unable to determine target function name for @ngInject.");
-
   @Override
   public void process(Node externs, Node root) {
     hotSwapScript(root, null);
@@ -161,7 +156,7 @@ class AngularPass extends AbstractPostOrderCallback
     if (params != null) {
       return createStringsFromParamList(params);
     }
-    return Lists.newArrayList();
+    return new ArrayList<>();
   }
 
   /**
@@ -171,7 +166,7 @@ class AngularPass extends AbstractPostOrderCallback
    */
   private static List<Node> createStringsFromParamList(Node params) {
     Node param = params.getFirstChild();
-    ArrayList<Node> names = Lists.newArrayList();
+    ArrayList<Node> names = new ArrayList<>();
     while (param != null && param.isName()) {
       names.add(IR.string(param.getString()).srcref(param));
       param = param.getNext();
@@ -223,18 +218,43 @@ class AngularPass extends AbstractPostOrderCallback
       // var a = function() {}
       // var a = b = function() {}
       case Token.VAR:
+      case Token.LET:
+      case Token.CONST:
         name = n.getFirstChild().getString();
         // looks for a function node.
         fn = getDeclarationRValue(n);
         target = n;
         break;
+
+      // handles class method case:
+      // class clName(){
+      //   constructor(){}
+      //   someMethod(){} <===
+      // }
+      case Token.MEMBER_FUNCTION_DEF:
+        Node parent = n.getParent();
+        if (parent.isClassMembers()){
+          Node classNode = parent.getParent();
+          String midPart = n.isStaticMember() ? "." : ".prototype.";
+          name = NodeUtil.getClassName(classNode) + midPart + n.getString();
+          if (n.getString().equals("constructor")) {
+            name = NodeUtil.getClassName(classNode);
+          }
+          fn = n.getFirstChild();
+          if (classNode.getParent().isAssign()) {
+            target = classNode.getParent().getParent();
+          } else {
+            target = classNode;
+          }
+        }
+        break;
     }
-    // checks that it is a function declaration.
+
     if (fn == null || !fn.isFunction()) {
       compiler.report(t.makeError(n, INJECT_NON_FUNCTION_ERROR));
       return;
     }
-    // checks that the declaration took place in a block or in a global scope.
+    // report an error if the function declaration did not take place in a block or global scope
     if (!target.getParent().isScript() && !target.getParent().isBlock()) {
       compiler.report(t.makeError(n, INJECT_IN_NON_GLOBAL_OR_BLOCK_ERROR));
       return;
@@ -261,7 +281,7 @@ class AngularPass extends AbstractPostOrderCallback
    */
   private static Node getDeclarationRValue(Node n) {
     Preconditions.checkNotNull(n);
-    Preconditions.checkArgument(n.isVar());
+    Preconditions.checkArgument(NodeUtil.isNameDeclaration(n));
     n = n.getFirstChild().getFirstChild();
     if (n == null) {
       return null;
